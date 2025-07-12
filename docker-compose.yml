@@ -1,0 +1,38 @@
+# docker-compose.yml
+
+version: '3.8' # 파일 형식 버전을 지정합니다.
+
+services: # 이 아래에 우리가 실행할 서비스(컨테이너)들을 정의합니다.
+
+  # 1. MySQL 데이터베이스 서비스
+  mysql-db:
+    image: mysql:8.0          # mysql 8.0 버전 이미지를 사용
+    container_name: point-mysql # 컨테이너 이름을 b2b-mysql로 지정
+    ports:
+      - "3306:3306"           # 내 Mac의 3306 포트와 컨테이너의 3306 포트를 연결
+    environment:              # 환경 변수 설정 (DB 초기 설정)
+      MYSQL_ROOT_PASSWORD: root4321 # MySQL root 계정 비밀번호
+      MYSQL_DATABASE: point_service_db    # 컨테이너 생성 시 b2b_service_db 데이터베이스를 자동 생성
+    volumes:
+      - ./mysql-data:/var/lib/mysql # DB 데이터를 내 Mac의 mysql-data 폴더에 저장 (데이터 영속성)
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  # 2. Redis 캐시 서비스
+  redis-cache:
+    image: redis:latest       # 최신 redis 이미지를 사용
+    container_name: point-redis # 컨테이너 이름
+    ports:
+      - "6379:6379"           # 내 Mac의 6379 포트와 컨테이너의 6379 포트를 연결
+
+  # 3. RabbitMQ 메시지 큐 서비스
+  rabbitmq-queue:
+    image: rabbitmq:3-management # 관리자 페이지가 포함된 rabbitmq 이미지를 사용
+    container_name: point-rabbitmq # 컨테이너 이름
+    ports:
+      - "5672:5672"           # 애플리케이션과 통신하는 포트
+      - "15672:15672"         # 관리자 웹 페이지 접속 포트 (http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest # 기본 사용자 ID
+      RABBITMQ_DEFAULT_PASS: guest # 기본 사용자 비밀번호
