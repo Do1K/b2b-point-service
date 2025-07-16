@@ -6,9 +6,8 @@ on:
       - deploy
 
 env:
-  # GitHub Container Registry 주소와 이미지 이름을 환경 변수로 설정
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }} # 예: your-username/your-repo-name
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push-image:
@@ -27,39 +26,41 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 변경된 부분: Gradle 빌드 작업의 working-directory 지정
       - name: Build with Gradle
-        working-directory: ./b2b-point # gradlew 파일이 있는 b2b-point 폴더에서 실행
+        working-directory: ./b2b-point
         run: |
           chmod +x ./gradlew
           ./gradlew build -x test
 
+      # --- 여기가 빠져있던 부분입니다 ---
       - name: Log in to the Container registry
-        # ... (이하 동일) ...
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # 빌드/푸시 작업에서는 GITHUB_TOKEN 사용 가능
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: . # Dockerfile이 최상위 루트에 있으므로 context는 '.' 그대로 유지
+          context: .
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   deploy-to-oracle:
-    needs: build-and-push-image # 'build-and-push-image' 작업이 성공해야만 실행됨
+    needs: build-and-push-image
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Oracle 서버에 배포용 docker-compose.prod.yml 파일 복사
       - name: Copy docker-compose.prod.yml to Oracle Server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.ORACLE_HOST }}
           username: ${{ secrets.ORACLE_USERNAME }}
           key: ${{ secrets.ORACLE_SSH_KEY }}
-          source: "docker-compose.prod.yml" # 프로젝트의 docker-compose.prod.yml 파일
-          target: "/home/opc/app"            # 서버의 배포 폴더
+          source: "docker-compose.prod.yml"
+          target: "/home/opc/app"
 
-      # 2. SSH로 서버에 접속하여 Docker Compose 실행
       - name: Execute deployment script on Oracle Server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -67,15 +68,14 @@ jobs:
           username: ${{ secrets.ORACLE_USERNAME }}
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
-            cd /home/opc/app # 배포 폴더로 이동
+            cd /home/opc/app
 
-            # GitHub Container Registry에 로그인
             echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # docker-compose.prod.yml을 사용하여 최신 이미지로 컨테이너를 다시 시작
-            # --pull always: 실행 전에 항상 최신 이미지를 받아오도록 강제
-            # -d: 백그라운드에서 실행
-            docker compose -f docker-compose.prod.yml --pull always up -d --remove-orphans
+            # docker-compose.prod.yml의 이미지 태그를 동적으로 설정
+            # GITHUB_SHA 환경 변수를 주입하여 사용
+            export IMAGE_TAG=${{ github.sha }}
+            export GITHUB_REPOSITORY=${{ github.repository }}
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans --pull always
             
-            # 사용하지 않는 오래된 Docker 이미지 정리
             docker image prune -af
