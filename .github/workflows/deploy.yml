@@ -28,11 +28,11 @@ jobs:
 
       - name: Build with Gradle
         working-directory: ./b2b-point
+
         run: |
           chmod +x ./gradlew
           ./gradlew build -x test
-
-      # --- 여기가 빠져있던 부분입니다 ---
+          
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -44,14 +44,17 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository | tolower }}:${{ github.sha }}
 
   deploy-to-oracle:
+
     needs: build-and-push-image
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Copy docker-compose.prod.yml to Oracle Server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -76,4 +79,5 @@ jobs:
             export GITHUB_REPOSITORY=${{ github.repository | tolower }}
             docker compose -f docker-compose.prod.yml up -d --remove-orphans --pull always
             
+
             docker image prune -af
