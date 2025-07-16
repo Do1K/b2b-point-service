@@ -5,7 +5,7 @@ services:
   app:
     # 이 이미지는 GitHub Actions에서 빌드하고 푸시할 것입니다.
     # ghcr.io/사용자이름/저장소이름:latest 와 같은 형식이 됩니다.
-    image: ghcr.io/${{ github.repository }}:${{ github.sha }} # 이 부분은 GitHub Actions에서 동적으로 채워집니다.
+    image: ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG:-latest}
     container_name: b2b-point-app
     depends_on: # DB, Redis, RabbitMQ가 먼저 실행된 후 앱이 실행되도록 순서를 정합니다.
       - mysql-db
