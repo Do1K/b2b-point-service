@@ -55,6 +55,7 @@ jobs:
           # 이전 스텝에서 생성한 output 값을 사용
           tags: ghcr.io/${{ steps.set_image_name.outputs.repo_lower }}:${{ steps.set_image_name.outputs.sha_short }}
 
+
   deploy-to-oracle:
     needs: build-and-push-image # build-and-push-image 작업이 성공해야 실행
     runs-on: ubuntu-latest
