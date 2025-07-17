@@ -61,6 +61,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
       - name: Copy docker-compose.prod.yml to Oracle Server
         uses: appleboy/scp-action@v0.1.7
         with:
