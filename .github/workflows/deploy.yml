@@ -83,6 +83,7 @@ jobs:
             
             export GITHUB_REPOSITORY_LOWER=${{ needs.build-and-push-image.outputs.image_name_lower }}
             export IMAGE_TAG=${{ needs.build-and-push-image.outputs.image_tag }}
+
             
             docker compose -f docker-compose.prod.yml up -d --remove-orphans --pull always
             
