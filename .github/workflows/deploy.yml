@@ -53,10 +53,11 @@ jobs:
         with:
           context: .
           push: true
+
           tags: ghcr.io/${{ steps.set_image_name.outputs.repo_lower }}:${{ steps.set_image_name.outputs.sha_short }}
 
   deploy-to-oracle:
-    needs: build-and-push-image
+    needs: build-and-push-image 
     runs-on: ubuntu-latest
 
     steps:
