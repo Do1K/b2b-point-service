@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository | tolower }}
 
 jobs:
   build-and-push-image:
@@ -28,33 +28,29 @@ jobs:
 
       - name: Build with Gradle
         working-directory: ./b2b-point
-
         run: |
           chmod +x ./gradlew
           ./gradlew build -x test
-          
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # 빌드/푸시 작업에서는 GITHUB_TOKEN 사용 가능
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository | tolower }}:${{ github.sha }}
 
   deploy-to-oracle:
-
     needs: build-and-push-image
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Copy docker-compose.prod.yml to Oracle Server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -75,9 +71,10 @@ jobs:
 
             echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
+            # 환경 변수 설정
             export IMAGE_TAG=${{ github.sha }}
-            export GITHUB_REPOSITORY=${{ github.repository | tolower }}
+            export GITHUB_REPOSITORY_LOWER=${{ env.IMAGE_NAME }} # 소문자로 변환된 이미지 이름을 환경변수로 주입
+            
             docker compose -f docker-compose.prod.yml up -d --remove-orphans --pull always
             
-
             docker image prune -af
