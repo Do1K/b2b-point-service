@@ -5,13 +5,14 @@ on:
     branches:
       - deploy
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository | tolower }}
-
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
+    # outputs: job 간에 데이터를 전달하기 위해 사용
+    outputs:
+      image_name_lower: ${{ steps.set_image_name.outputs.repo_lower }}
+      image_tag: ${{ steps.set_image_name.outputs.sha_short }}
+
     permissions:
       contents: read
       packages: write
@@ -19,6 +20,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # 1. 소문자 이미지 이름과 태그를 생성하고, output으로 설정하는 스텝
+      - name: Set lower case image name and tag
+        id: set_image_name # 이 스텝의 ID
+        run: |
+          echo "repo_lower=${{ github.repository,, }}" >> $GITHUB_OUTPUT
+          echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -35,7 +43,7 @@ jobs:
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -44,10 +52,11 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          # 이전 스텝에서 생성한 output 값을 사용
+          tags: ghcr.io/${{ steps.set_image_name.outputs.repo_lower }}:${{ steps.set_image_name.outputs.sha_short }}
 
   deploy-to-oracle:
-    needs: build-and-push-image
+    needs: build-and-push-image # build-and-push-image 작업이 성공해야 실행
     runs-on: ubuntu-latest
 
     steps:
@@ -71,9 +80,8 @@ jobs:
 
             echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # 환경 변수 설정
-            export IMAGE_TAG=${{ github.sha }}
-            export GITHUB_REPOSITORY_LOWER=${{ env.IMAGE_NAME }} # 소문자로 변환된 이미지 이름을 환경변수로 주입
+            export GITHUB_REPOSITORY_LOWER=${{ needs.build-and-push-image.outputs.image_name_lower }}
+            export IMAGE_TAG=${{ needs.build-and-push-image.outputs.image_tag }}
             
             docker compose -f docker-compose.prod.yml up -d --remove-orphans --pull always
             
