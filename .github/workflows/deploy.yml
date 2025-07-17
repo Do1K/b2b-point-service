@@ -64,7 +64,7 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Copy docker-compose.prod.yml to Oracle Server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -72,7 +72,7 @@ jobs:
           username: ${{ secrets.ORACLE_USERNAME }}
           key: ${{ secrets.ORACLE_SSH_KEY }}
           source: "docker-compose.prod.yml"
-          target: "/home/opc/app"
+          target: "/home/ubuntu/app"
 
       - name: Execute deployment script on Oracle Server
         uses: appleboy/ssh-action@v1.0.3
@@ -81,7 +81,7 @@ jobs:
           username: ${{ secrets.ORACLE_USERNAME }}
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
-            cd /home/opc/app
+            cd /home/ubuntu/app
 
             echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
