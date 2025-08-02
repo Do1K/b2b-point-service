@@ -91,12 +91,10 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d --remove-orphans --pull always
             docker image prune -af
       
-       - name: Verify deployment
-        # 배포된 서비스가 완전히 뜨기까지 약간의 시간이 필요하므로, 15초 정도 기다립니다.
+      - name: Verify deployment
         run: |
           sleep 20
           echo "Verifying deployment at https://b2bpoint.shop/health-check"
-          
           
           STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://b2bpoint.shop/health-check)
           
