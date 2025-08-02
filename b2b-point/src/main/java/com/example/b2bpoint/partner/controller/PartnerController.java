@@ -2,19 +2,27 @@ package com.example.b2bpoint.partner.controller;
 
 import com.example.b2bpoint.common.dto.ApiResponse;
 import com.example.b2bpoint.partner.dto.PartnerCreateRequest;
+import com.example.b2bpoint.partner.dto.PartnerResponse;
+import com.example.b2bpoint.partner.service.PartnerService;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
+@RequestMapping("/api/v1/partners") // 이 컨트롤러의 모든 엔드포인트는 /api/v1/partners 로 시작
+@RequiredArgsConstructor
 public class PartnerController {
 
+    private final PartnerService partnerService;
+
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createPartner(@RequestBody @Valid PartnerCreateRequest request) {
+        PartnerResponse partnerResponse=partnerService.createPartner(request);
 
-
+        return ApiResponse.success(partnerResponse);
     }
 }

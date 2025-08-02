@@ -23,6 +23,11 @@ repositories {
     mavenCentral()
 }
 
+tasks.named('test') {
+    useJUnitPlatform()
+    jvmArgs '-Xshare:off' // JVM 아규먼트 설정
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

@@ -27,4 +27,10 @@ public class PartnerCreateRequest {
                 .businessNumber(this.businessNumber) // 엔티티에 해당 필드가 있다면
                 .build();
     }
+
+    public PartnerCreateRequest(String name, String contactEmail, String businessNumber) {
+        this.name = name;
+        this.contactEmail = contactEmail;
+        this.businessNumber = businessNumber;
+    }
 }
