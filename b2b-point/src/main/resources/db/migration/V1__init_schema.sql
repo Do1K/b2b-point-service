@@ -7,10 +7,13 @@ CREATE TABLE partners
 (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     name       VARCHAR(100)                                              NOT NULL COMMENT '파트너사 이름',
-    api_key    VARCHAR(255)                                              NOT NULL COMMENT '인증을 위한 고유 API Key',
+    contact_email     VARCHAR(255)                                       NOT NULL COMMENT '담당자 이메일',
+    business_number   VARCHAR(50)                                        NOT NULL COMMENT '사업자 등록 번호',
+    api_key    VARCHAR(255)                                              NULL COMMENT '인증을 위한 고유 API Key',
     status     ENUM ('PENDING', 'ACTIVE', 'INACTIVE')                    NOT NULL DEFAULT 'PENDING' COMMENT '파트너사 상태 (승인대기, 활성, 비활성)',
     created_at DATETIME(6)                                               NOT NULL COMMENT '생성 일시',
     updated_at DATETIME(6)                                               NOT NULL COMMENT '마지막 수정 일시',
+    CONSTRAINT uk_business_number UNIQUE (business_number),
     CONSTRAINT uk_api_key UNIQUE (api_key)
 ) COMMENT '파트너사 정보';
 
