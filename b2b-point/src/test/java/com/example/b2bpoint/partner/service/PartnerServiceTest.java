@@ -2,6 +2,7 @@ package com.example.b2bpoint.partner.service;
 
 import com.example.b2bpoint.common.exception.CustomException;
 import com.example.b2bpoint.partner.domain.Partner;
+import com.example.b2bpoint.partner.dto.ApiKeyResponse;
 import com.example.b2bpoint.partner.dto.PartnerCreateRequest;
 import com.example.b2bpoint.partner.dto.PartnerResponse;
 import com.example.b2bpoint.partner.repository.PartnerRepository;
@@ -68,6 +69,47 @@ class PartnerServiceTest {
         assertThrows(CustomException.class, () -> {
             partnerService.createPartner(request);
         });
+
+    }
+
+    @DisplayName("apiKey 발급 성공")
+    @Test
+    void issueApiKey_success() {
+        //given
+        Long partnerId=1L;
+
+        Partner fakeSavedPartner = Partner.builder()
+                .build();
+
+        fakeSavedPartner.approve();
+        given(partnerRepository.findById(partnerId)).willReturn(Optional.of(fakeSavedPartner));
+
+        //when
+        ApiKeyResponse response = partnerService.issueApiKey(partnerId);
+
+        //then
+        assertThat(response).isNotNull();
+        assertThat(response.getMessage()).contains("성공");
+
+    }
+
+    @DisplayName("승인 받지 않은 파트너사는 apiKey 발급받을 수 없음")
+    @Test
+    void issueApiKey_fail_whenStatusNotActive() {
+
+        //given
+        Long partnerId=1L;
+
+        Partner fakeSavedPartner=Partner.builder()
+                .build();
+
+        given(partnerRepository.findById(partnerId)).willReturn(Optional.of(fakeSavedPartner));
+
+        //when&then
+        assertThrows(CustomException.class, () -> {
+            partnerService.issueApiKey(partnerId);
+        });
+
 
     }
 
