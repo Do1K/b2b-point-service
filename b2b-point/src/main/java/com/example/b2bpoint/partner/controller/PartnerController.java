@@ -33,4 +33,14 @@ public class PartnerController {
 
         return ApiResponse.success(apiKeyResponse);
     }
+
+
+    @GetMapping("/{userId}")
+    public ApiResponse<String> partnerForTest(
+            @RequestAttribute Long partnerId,
+            @PathVariable String userId) {
+        String responseMessage = "테스트";
+        return ApiResponse.success(responseMessage);
+    }
+
 }

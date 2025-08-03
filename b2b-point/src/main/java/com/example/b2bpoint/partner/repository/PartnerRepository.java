@@ -9,4 +9,6 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
 
 
     Optional<Partner> findByBusinessNumber(String businessNumber);
+
+    Optional<Partner> findByApiKey(String apiKey);
 }
