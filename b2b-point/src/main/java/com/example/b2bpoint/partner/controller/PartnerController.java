@@ -1,6 +1,7 @@
 package com.example.b2bpoint.partner.controller;
 
 import com.example.b2bpoint.common.dto.ApiResponse;
+import com.example.b2bpoint.partner.dto.ApiKeyResponse;
 import com.example.b2bpoint.partner.dto.PartnerCreateRequest;
 import com.example.b2bpoint.partner.dto.PartnerResponse;
 import com.example.b2bpoint.partner.service.PartnerService;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/partners") // 이 컨트롤러의 모든 엔드포인트는 /api/v1/partners 로 시작
+@RequestMapping("/api/v1/partners")
 @RequiredArgsConstructor
 public class PartnerController {
 
@@ -20,9 +21,16 @@ public class PartnerController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<?> createPartner(@RequestBody @Valid PartnerCreateRequest request) {
+    public ApiResponse<PartnerResponse> createPartner(@RequestBody @Valid PartnerCreateRequest request) {
         PartnerResponse partnerResponse=partnerService.createPartner(request);
 
         return ApiResponse.success(partnerResponse);
+    }
+
+    @PostMapping("/{partnerId}/api-key")
+    public ApiResponse<ApiKeyResponse> issueApiKey(@PathVariable Long partnerId){
+        ApiKeyResponse apiKeyResponse=partnerService.issueApiKey(partnerId);
+
+        return ApiResponse.success(apiKeyResponse);
     }
 }
