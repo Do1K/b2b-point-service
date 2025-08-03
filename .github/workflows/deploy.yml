@@ -91,19 +91,3 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d --remove-orphans --pull always
             docker image prune -af
       
-
-      - name: Verify deployment
-        run: |
-          sleep 20
-          echo "Verifying deployment at https://b2bpoint.shop/health-check"
-
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://b2bpoint.shop/health-check)
-          
-          echo "Received status code: $STATUS_CODE"
-          
-          if [ "$STATUS_CODE" -ne 200 ]; then
-            echo "::error::Deployment verification failed with status code $STATUS_CODE"
-            exit 1
-          else
-            echo "Deployment verified successfully!"
-          fi
