@@ -23,7 +23,7 @@ public enum ErrorCode {
     // Partner
     PARTNER_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "해당 파트너사를 찾을 수 없습니다."),
     PARTNER_ALREADY_EXISTS(HttpStatus.CONFLICT, "P002", "이미 존재하는 파트너사입니다."),
-    PARTNER_NOT_ACTIVE(HttpStatus.BAD_REQUEST, "P003", "활동 허가가 나지 않은 파트너사입니다."),
+    PARTNER_NOT_ACTIVE(HttpStatus.BAD_REQUEST, "P003", "활성 상태의 파트너사가 아닙니다."),
 
     // Point
     POINT_WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "PT001", "포인트 지갑을 찾을 수 없습니다."),
