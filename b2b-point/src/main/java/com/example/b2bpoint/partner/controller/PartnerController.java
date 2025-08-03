@@ -33,4 +33,13 @@ public class PartnerController {
 
         return ApiResponse.success(apiKeyResponse);
     }
+
+    @GetMapping("/{userId}")
+    public ApiResponse<String> partnerForTest(
+            @RequestAttribute Long partnerId,
+            @PathVariable String userId) {
+        // 이 메서드는 인터셉터가 정상 통과했는지만 확인하는 용도
+        String responseMessage = "테스트";
+        return ApiResponse.success(responseMessage);
+    }
 }
