@@ -3,6 +3,7 @@ package com.example.b2bpoint.point.dto;
 import com.example.b2bpoint.point.domain.PointWallet;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 public class PointResponse {

@@ -12,7 +12,6 @@ public class PointChargeRequest {
     @NotBlank(message = "사용자 ID는 필수입니다.")
     private String userId;
 
-    @NotBlank(message = "포인트 양은 필수입니다.")
     @Min(value = 1, message = "포인트 양은 1 이상이어야 합니다.")
     private Integer amount;
 
