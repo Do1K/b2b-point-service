@@ -1,5 +1,6 @@
 package com.example.b2bpoint.point.service;
 
+import com.example.b2bpoint.common.exception.CustomException;
 import com.example.b2bpoint.point.domain.PointHistory;
 import com.example.b2bpoint.point.domain.PointWallet;
 import com.example.b2bpoint.point.domain.TransactionType;
@@ -36,6 +37,7 @@ class PointServiceTest {
     private final String userId = "user123";
     private final int amount = 1000;
     private final String description = "충전 테스트";
+    private final String description2 = "사용 테스트";
 
     @DisplayName("지갑이 없으면 새로 생성하고 충전한다.")
     @Test
@@ -116,5 +118,66 @@ class PointServiceTest {
         assertThrows(IllegalArgumentException.class, () -> pointService.charge(partnerId, userId, 0, description));
 
     }
+
+    @DisplayName("성공: 기존 지갑에 잔액이 충분할 경우 포인트를 소모합니다.")
+    @Test
+    void use_success_whenWalletExists() {
+        //given
+        PointWallet wallet = PointWallet.create(partnerId,userId);
+        wallet.earn(2000);
+
+        BDDMockito.given(walletRepository.findByPartnerIdAndUserId(partnerId, userId))
+                .willReturn(Optional.of(wallet));
+
+        //when
+        PointResponse pointResponse = pointService.use(partnerId, userId, amount, "사용 테스트");
+
+        //then
+        verify(walletRepository, never()).save(BDDMockito.any(PointWallet.class));
+        verify(pointHistoryRepository).save(BDDMockito.any(PointHistory.class));
+        assertThat(pointResponse.getUserId()).isEqualTo(userId);
+        assertThat(pointResponse.getPoints()).isEqualTo(2000-amount);
+    }
+
+    @DisplayName("실패: 신규 사용자의 경우 포인트가 부족하여 사용에 실패합니다.")
+    @Test
+    void use_fail_whenWalletDoesNotExist() {
+        //given
+        BDDMockito.given(walletRepository.findByPartnerIdAndUserId(partnerId, userId))
+                .willReturn(Optional.empty());
+
+        PointWallet newWallet = PointWallet.create(partnerId,userId);
+
+        BDDMockito.given(walletRepository.save(BDDMockito.any(PointWallet.class)))
+                .willReturn(newWallet);
+
+        //when&then
+        assertThrows(CustomException.class, () -> pointService.use(partnerId, userId, amount, description2));
+    }
+
+    @DisplayName("성공: 포인트 사용 시, 히스토리 정상적으로 저장되는지 확인")
+    @Test
+    void use_success_with_history() {
+        //given
+
+        PointWallet wallet = PointWallet.create(partnerId, userId);
+        wallet.earn(2000);
+        BDDMockito.given(walletRepository.findByPartnerIdAndUserId(partnerId, userId))
+                .willReturn(Optional.of(wallet));
+
+        // when
+        pointService.use(partnerId, userId, amount, description2);
+
+        // then
+        ArgumentCaptor<PointHistory> historyCaptor = ArgumentCaptor.forClass(PointHistory.class);
+        verify(pointHistoryRepository).save(historyCaptor.capture());
+        PointHistory history = historyCaptor.getValue();
+
+        assertThat(history.getAmount()).isEqualTo(2000-amount);
+        assertThat(history.getDescription()).isEqualTo(description2);
+        assertThat(history.getTransactionType()).isEqualTo(TransactionType.USE);
+        assertThat(history.getPointWallet()).isEqualTo(wallet);
+    }
+
 
 }
