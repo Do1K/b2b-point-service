@@ -50,6 +50,7 @@ class PointControllerTest {
     private Partner testPartner;
     private String validApiKey;
     private static final String CHARGE_URL = "/api/v1/points/charge";
+    private static final String USE_URL = "/api/v1/points/use";
 
     @BeforeEach
     void setUp() {
@@ -140,4 +141,68 @@ class PointControllerTest {
                 .andExpect(jsonPath("$.error.code").value("C001")) // INVALID_INPUT_VALUE
                 .andDo(print());
     }
+
+    @DisplayName("성공: 기존 사용자가 포인트를 사용한다.")
+    @Test
+    void use_existUser_success() throws Exception {
+        //given
+        String existingUserId = "existing-user-456";
+        PointWallet existingWallet = PointWallet.builder()
+                .partnerId(testPartner.getId())
+                .userId(existingUserId)
+                .build();
+        existingWallet.earn(2000);
+        pointWalletRepository.save(existingWallet);
+
+        PointRequest request= new PointRequest(existingUserId, 1000, "쿠키 구매", null);
+        String requestBody = objectMapper.writeValueAsString(request);
+
+        //when&then
+        mockMvc.perform(post(USE_URL)
+                        .header("X-API-KEY", validApiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.userId").value(existingUserId))
+                .andExpect(jsonPath("$.data.points").value(1000));
+
+        PointWallet wallet= pointWalletRepository.findByPartnerIdAndUserId(testPartner.getId(), existingUserId).get();
+        assertThat(wallet.getPoints()).isEqualTo(1000);
+
+    }
+
+    @DisplayName("실패: 사용자의 포인트 잔액이 부족.")
+    @Test
+    void use_existUser_fail_point_not_enough() throws Exception {
+        //given
+        String existingUserId = "existing-user-456";
+        PointWallet existingWallet = PointWallet.builder()
+                .partnerId(testPartner.getId())
+                .userId(existingUserId)
+                .build();
+        existingWallet.earn(1000);
+        pointWalletRepository.save(existingWallet);
+
+        PointRequest request= new PointRequest(existingUserId, 2000, "쿠키 구매", null);
+        String requestBody = objectMapper.writeValueAsString(request);
+
+        //when&then
+        mockMvc.perform(post(USE_URL)
+                        .header("X-API-KEY", validApiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("PT002"))
+                .andDo(print());
+
+        PointWallet wallet= pointWalletRepository.findByPartnerIdAndUserId(testPartner.getId(), existingUserId).get();
+        assertThat(wallet.getPoints()).isEqualTo(1000);
+
+    }
+
+
 }
