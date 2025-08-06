@@ -179,5 +179,22 @@ class PointServiceTest {
         assertThat(history.getPointWallet()).isEqualTo(wallet);
     }
 
+    @DisplayName("성공: 포인트를 조회합니다.")
+    @Test
+    void get_points_success() {
+        //given
+        PointWallet wallet = PointWallet.create(partnerId, userId);
+        wallet.earn(2000);
+        BDDMockito.given(walletRepository.findByPartnerIdAndUserId(partnerId, userId))
+                .willReturn(Optional.of(wallet));
+
+        //when
+        PointResponse pointResponse = pointService.getPoints(partnerId, userId);
+
+        //then
+        assertThat(pointResponse.getUserId()).isEqualTo(userId);
+        assertThat(pointResponse.getPoints()).isEqualTo(2000);
+    }
+
 
 }
