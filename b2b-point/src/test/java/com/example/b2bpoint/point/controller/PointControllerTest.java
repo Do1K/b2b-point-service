@@ -3,12 +3,11 @@ package com.example.b2bpoint.point.controller;
 import com.example.b2bpoint.partner.domain.Partner;
 import com.example.b2bpoint.partner.repository.PartnerRepository;
 import com.example.b2bpoint.point.domain.PointWallet;
-import com.example.b2bpoint.point.dto.PointChargeRequest;
+import com.example.b2bpoint.point.dto.PointRequest;
 import com.example.b2bpoint.point.repository.PointHistoryRepository;
 import com.example.b2bpoint.point.repository.PointWalletRepository;
 import com.example.b2bpoint.point.service.PointService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,12 +16,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -74,7 +70,7 @@ class PointControllerTest {
     void charge_newUser_success() throws Exception {
         //given
         String newUserId = "new-user-123";
-        PointChargeRequest request = new PointChargeRequest(newUserId, 1000, "신규 가입 축하 포인트", null);
+        PointRequest request = new PointRequest(newUserId, 1000, "신규 가입 축하 포인트", null);
         String requestBody = objectMapper.writeValueAsString(request);
 
         //when&then
@@ -106,7 +102,7 @@ class PointControllerTest {
         existingWallet.earn(500);
         pointWalletRepository.save(existingWallet);
 
-        PointChargeRequest request= new PointChargeRequest(existingUserId, 1000, "이벤트 참여 보상", null);
+        PointRequest request= new PointRequest(existingUserId, 1000, "이벤트 참여 보상", null);
         String requestBody = objectMapper.writeValueAsString(request);
 
         //when&then
@@ -130,7 +126,7 @@ class PointControllerTest {
     void chargePoints_withInvalidRequest_shouldFail() throws Exception {
         // given
         String userId = "user-789";
-        PointChargeRequest request = new PointChargeRequest(userId, -100, "잘못된 요청", null);
+        PointRequest request = new PointRequest(userId, -100, "잘못된 요청", null);
         String requestBody = objectMapper.writeValueAsString(request);
 
         // when & then

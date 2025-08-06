@@ -37,4 +37,26 @@ public class PointService {
 
         return PointResponse.from(wallet);
     }
+
+    public PointResponse use(Long partnerId, String userId, int amount, String description) {
+
+        PointWallet wallet = pointWalletRepository.findByPartnerIdAndUserId(partnerId, userId)
+                .orElseGet(() -> {
+                    PointWallet newWallet = PointWallet.create(partnerId, userId);
+                    return pointWalletRepository.save(newWallet);
+                });
+
+        wallet.use(amount);
+
+        PointHistory history = PointHistory.builder()
+                .pointWallet(wallet)
+                .transactionType(TransactionType.USE)
+                .amount(amount)
+                .description(description)
+                .build();
+
+        pointHistoryRepository.save(history);
+
+        return PointResponse.from(wallet);
+    }
 }

@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class PointChargeRequest {
+public class PointRequest {
 
     @NotBlank(message = "사용자 ID는 필수입니다.")
     private String userId;
@@ -19,7 +19,7 @@ public class PointChargeRequest {
 
     private String partnerOrderId;
 
-    public PointChargeRequest(String userId, Integer amount, String description, String partnerOrderId) {
+    public PointRequest(String userId, Integer amount, String description, String partnerOrderId) {
         this.userId = userId;
         this.amount = amount;
         this.description = description;
