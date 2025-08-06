@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,6 +52,7 @@ class PointControllerTest {
     private String validApiKey;
     private static final String CHARGE_URL = "/api/v1/points/charge";
     private static final String USE_URL = "/api/v1/points/use";
+    private static final String GET_POINTS_URL = "/api/v1/points/{userId}";
 
     @BeforeEach
     void setUp() {
@@ -203,6 +205,35 @@ class PointControllerTest {
         assertThat(wallet.getPoints()).isEqualTo(1000);
 
     }
+
+    @DisplayName("성공: 사용자의 포인트 잔액 조회.")
+    @Test
+    void get_points_success() throws Exception {
+        //given
+        String existingUserId = "existing-user-456";
+        PointWallet existingWallet = PointWallet.builder()
+                .partnerId(testPartner.getId())
+                .userId(existingUserId)
+                .build();
+        existingWallet.earn(1000);
+        pointWalletRepository.save(existingWallet);
+
+
+        //when&then
+        mockMvc.perform(get(GET_POINTS_URL,existingUserId)
+                        .header("X-API-KEY", validApiKey)
+
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.userId").value(existingUserId))
+                .andExpect(jsonPath("$.data.points").value(1000))
+                .andDo(print());
+
+
+    }
+
+
 
 
 }
