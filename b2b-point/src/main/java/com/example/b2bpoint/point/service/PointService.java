@@ -1,5 +1,7 @@
 package com.example.b2bpoint.point.service;
 
+import com.example.b2bpoint.common.exception.CustomException;
+import com.example.b2bpoint.common.exception.ErrorCode;
 import com.example.b2bpoint.point.domain.PointHistory;
 import com.example.b2bpoint.point.domain.PointWallet;
 import com.example.b2bpoint.point.domain.TransactionType;
@@ -8,8 +10,10 @@ import com.example.b2bpoint.point.repository.PointHistoryRepository;
 import com.example.b2bpoint.point.repository.PointWalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class PointService {
 
@@ -56,6 +60,15 @@ public class PointService {
                 .build();
 
         pointHistoryRepository.save(history);
+
+        return PointResponse.from(wallet);
+    }
+
+    @Transactional(readOnly = true)
+    public PointResponse getPoints(Long partnerId, String userId) {
+
+        PointWallet wallet = pointWalletRepository.findByPartnerIdAndUserId(partnerId, userId)
+                .orElseThrow(()->new CustomException(ErrorCode.POINT_WALLET_NOT_FOUND));
 
         return PointResponse.from(wallet);
     }

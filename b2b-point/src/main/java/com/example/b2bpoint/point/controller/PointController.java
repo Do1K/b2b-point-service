@@ -33,4 +33,13 @@ public class PointController {
         PointResponse response=pointService.use(partnerId, request.getUserId(), request.getAmount(), request.getDescription());
         return ApiResponse.success(response);
     }
+
+    @GetMapping("/{userId}")
+    public ApiResponse<PointResponse> getPoints(
+            @RequestAttribute Long partnerId,
+            @PathVariable String userId
+    ){
+        PointResponse response=pointService.getPoints(partnerId, userId);
+        return ApiResponse.success(response);
+    }
 }
