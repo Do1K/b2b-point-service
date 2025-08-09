@@ -28,8 +28,6 @@ public class PointWallet extends BaseEntity {
     @Column(nullable = false)
     private int points;
 
-    @Version
-    private Long version;
 
     @Builder
     private PointWallet(Long partnerId, String userId) {
