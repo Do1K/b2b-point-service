@@ -22,7 +22,7 @@ public class PointService {
 
     public PointResponse charge(Long partnerId, String userId, int amount, String description) {
 
-        PointWallet wallet = pointWalletRepository.findByPartnerIdAndUserId(partnerId, userId)
+        PointWallet wallet = pointWalletRepository.findByPartnerIdAndUserIdWithLock(partnerId, userId)
                 .orElseGet(() -> {
                     PointWallet newWallet = PointWallet.create(partnerId, userId);
                     return pointWalletRepository.save(newWallet);
@@ -44,7 +44,7 @@ public class PointService {
 
     public PointResponse use(Long partnerId, String userId, int amount, String description) {
 
-        PointWallet wallet = pointWalletRepository.findByPartnerIdAndUserId(partnerId, userId)
+        PointWallet wallet = pointWalletRepository.findByPartnerIdAndUserIdWithLock(partnerId, userId)
                 .orElseGet(() -> {
                     PointWallet newWallet = PointWallet.create(partnerId, userId);
                     return pointWalletRepository.save(newWallet);

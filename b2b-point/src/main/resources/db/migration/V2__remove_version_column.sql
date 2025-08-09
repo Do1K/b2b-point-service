@@ -1,0 +1,1 @@
+ALTER TABLE point_wallets DROP COLUMN version;
