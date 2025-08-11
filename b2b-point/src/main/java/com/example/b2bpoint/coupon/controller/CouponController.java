@@ -16,7 +16,7 @@ public class CouponController {
 
     private final CouponService couponService;
 
-    @PostMapping
+    @PostMapping("/template")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CouponTemplateResponse> createCouponTemplate(
             @RequestAttribute Long partnerId,
