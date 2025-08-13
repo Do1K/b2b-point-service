@@ -13,7 +13,6 @@ import com.example.b2bpoint.coupon.repository.CouponTemplateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 
 @Service
@@ -23,6 +22,7 @@ public class CouponService {
 
     private final CouponTemplateRepository couponTemplateRepository;
     private final CouponRepository couponRepository;
+
 
     public CouponTemplateResponse createCouponTemplate(Long partnerId, CouponTemplateCreateRequest request){
         if(request.getValidFrom().isAfter(request.getValidUntil())){
@@ -68,12 +68,10 @@ public class CouponService {
     }
 
     private void validateCouponIssuance(Long partnerId, CouponTemplate template, String userId) {
-        // [보안 검증] 요청을 보낸 파트너사가 쿠폰 템플릿의 소유주가 맞는지 확인
         if (!template.getPartnerId().equals(partnerId)) {
             throw new CustomException(ErrorCode.FORBIDDEN_ACCESS);
         }
 
-        // [기간 검증] 현재 시각이 쿠폰 발급 가능 기간 내에 있는지 확인
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(template.getValidFrom()) || now.isAfter(template.getValidUntil())) {
             throw new CustomException(ErrorCode.COUPON_NOT_IN_ISSUE_PERIOD);

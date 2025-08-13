@@ -14,4 +14,5 @@ public interface CouponTemplateRepository extends JpaRepository<CouponTemplate, 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select ct from CouponTemplate ct where ct.id = :id")
     Optional<CouponTemplate> findByIdWithLock(@Param("id") Long id);
+
 }
