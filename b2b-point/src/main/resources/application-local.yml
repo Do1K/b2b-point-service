@@ -9,3 +9,6 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+
+server:
+  port: 8081
