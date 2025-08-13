@@ -1,0 +1,17 @@
+version: '3'
+services:
+  ngrinder-controller:
+    image: ngrinder/controller:3.5.8
+    container_name: ngrinder-controller
+    ports:
+      - "8080:80"    # 웹 UI 포트
+      - "16001:16001"
+      - "12000-12009:12000-12009"
+
+  ngrinder-agent:
+    image: ngrinder/agent:3.5.8
+    container_name: ngrinder-agent
+    depends_on:
+      - ngrinder-controller
+
+    command: ngrinder-controller:80
