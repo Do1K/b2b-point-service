@@ -38,3 +38,5 @@ out/
 
 # Docker Volume Data
 mysql-data/
+
+*.log*
