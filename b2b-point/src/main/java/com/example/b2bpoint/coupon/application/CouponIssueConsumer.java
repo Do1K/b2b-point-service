@@ -21,7 +21,8 @@ public class CouponIssueConsumer {
             couponIssueSyncService.issueCouponWithoutLock(
                     message.getPartnerId(),
                     message.getCouponTemplateId(),
-                    message.getUserId()
+                    message.getUserId(),
+                    message.getValidUntil()
             );
             log.info("Coupon issued successfully for userId: {}", message.getUserId());
         } catch (Exception e) {

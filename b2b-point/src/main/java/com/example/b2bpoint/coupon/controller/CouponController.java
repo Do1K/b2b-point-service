@@ -42,7 +42,7 @@ public class CouponController {
     }
 
     @PostMapping("/issue-async") // 경로를 분리하거나 기존 경로를 대체
-    @ResponseStatus(HttpStatus.OK) // 201 Created가 아닌, '요청 접수' 의미로 200 OK 또는 202 Accepted가 더 적합
+    @ResponseStatus(HttpStatus.OK) //
     public ApiResponse<String> issueCouponAsync(
             @RequestAttribute Long partnerId,
             @RequestBody @Valid CouponIssueRequest request) {

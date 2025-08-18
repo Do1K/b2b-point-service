@@ -64,14 +64,14 @@ public class Coupon extends BaseEntity {
     }
 
     @Builder(builderMethodName = "issueBuilder")
-    public Coupon(Long partnerId, String userId, Long couponTemplateId) {
+    public Coupon(Long partnerId, String userId, Long couponTemplateId, LocalDateTime validUntil) {
         this.code = UUID.randomUUID().toString();
         this.partnerId = partnerId;
         this.userId = userId;
         this.couponTemplateId = couponTemplateId; // ID를 직접 할당
         this.status = CouponStatus.AVAILABLE;
         this.issuedAt = LocalDateTime.now();
-        this.expiredAt = couponTemplate.getValidUntil();
+        this.expiredAt = validUntil;
     }
 
     public void use() {

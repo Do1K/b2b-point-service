@@ -53,12 +53,13 @@ public class CouponIssueSyncService {
     }
 
     @Transactional
-    public void issueCouponWithoutLock(Long partnerId, Long couponTemplateId, String userId) {
+    public void issueCouponWithoutLock(Long partnerId, Long couponTemplateId, String userId, LocalDateTime validUntil) {
 
         Coupon coupon = Coupon.issueBuilder()
                 .partnerId(partnerId)
                 .userId(userId)
                 .couponTemplateId(couponTemplateId)
+
                 .build();
 
         Coupon savedCoupon = couponRepository.save(coupon);
