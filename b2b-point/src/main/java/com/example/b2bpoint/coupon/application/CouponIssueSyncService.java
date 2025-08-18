@@ -51,4 +51,16 @@ public class CouponIssueSyncService {
             throw new CustomException(ErrorCode.COUPON_ALREADY_ISSUED);
         }
     }
+
+    @Transactional
+    public void issueCouponWithoutLock(Long partnerId, Long couponTemplateId, String userId) {
+
+        Coupon coupon = Coupon.issueBuilder()
+                .partnerId(partnerId)
+                .userId(userId)
+                .couponTemplateId(couponTemplateId)
+                .build();
+
+        Coupon savedCoupon = couponRepository.save(coupon);
+    }
 }

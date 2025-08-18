@@ -18,7 +18,7 @@ public class CouponIssueConsumer {
     public void receive(CouponIssueMessage message) {
         log.info("Received message from RabbitMQ: {}", message);
         try {
-            couponIssueSyncService.issueCoupon(
+            couponIssueSyncService.issueCouponWithoutLock(
                     message.getPartnerId(),
                     message.getCouponTemplateId(),
                     message.getUserId()

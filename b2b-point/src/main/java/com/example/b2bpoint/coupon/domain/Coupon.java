@@ -45,8 +45,11 @@ public class Coupon extends BaseEntity {
     private LocalDateTime usedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coupon_template_id", nullable = false, updatable = false)
+    @JoinColumn(name = "coupon_template_id", nullable = false, insertable = false, updatable = false)
     private CouponTemplate couponTemplate;
+
+    @Column(name = "coupon_template_id")
+    private Long couponTemplateId; // INSERT/UPDATE 용
 
 
     @Builder
@@ -55,6 +58,17 @@ public class Coupon extends BaseEntity {
         this.partnerId = partnerId;
         this.userId = userId;
         this.couponTemplate = couponTemplate;
+        this.status = CouponStatus.AVAILABLE;
+        this.issuedAt = LocalDateTime.now();
+        this.expiredAt = couponTemplate.getValidUntil();
+    }
+
+    @Builder(builderMethodName = "issueBuilder")
+    public Coupon(Long partnerId, String userId, Long couponTemplateId) {
+        this.code = UUID.randomUUID().toString();
+        this.partnerId = partnerId;
+        this.userId = userId;
+        this.couponTemplateId = couponTemplateId; // ID를 직접 할당
         this.status = CouponStatus.AVAILABLE;
         this.issuedAt = LocalDateTime.now();
         this.expiredAt = couponTemplate.getValidUntil();

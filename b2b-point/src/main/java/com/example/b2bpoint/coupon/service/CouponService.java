@@ -8,15 +8,21 @@ import com.example.b2bpoint.coupon.domain.CouponTemplate;
 import com.example.b2bpoint.coupon.dto.*;
 import com.example.b2bpoint.coupon.repository.CouponRepository;
 import com.example.b2bpoint.coupon.repository.CouponTemplateRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class CouponService {
 
     private final CouponTemplateRepository couponTemplateRepository;
@@ -24,10 +30,11 @@ public class CouponService {
 
     private final StringRedisTemplate redisTemplate;
     private final CouponIssueProducer couponIssueProducer;
+    private final ObjectMapper objectMapper;
 
     private static final String COUPON_COUNT_KEY = "coupon:template:%d:count";
     private static final String COUPON_USERS_KEY = "coupon:template:%d:users";
-    private static final String COUPON_QUANTITY_KEY = "coupon:template:%d:quantity";
+    private static final String COUPON_TEMPLATE_KEY = "coupon:template:%d";
 
 
     public CouponTemplateResponse createCouponTemplate(Long partnerId, CouponTemplateCreateRequest request){
@@ -50,8 +57,28 @@ public class CouponService {
 
         CouponTemplate savedTemplate = couponTemplateRepository.save(couponTemplate);
 
-        String quantityKey = String.format(COUPON_QUANTITY_KEY, savedTemplate.getTotalQuantity());
-        redisTemplate.opsForValue().set(quantityKey, savedTemplate.getTotalQuantity().toString());
+
+        try {
+            String cacheKey = String.format(COUPON_TEMPLATE_KEY, savedTemplate.getId());
+            String templateJson = objectMapper.writeValueAsString(savedTemplate);
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime validFrom = savedTemplate.getValidFrom();
+            Duration ttl;
+
+            if (validFrom.isBefore(now)) {
+                ttl = Duration.ofDays(1);
+            } else {
+                Duration durationUntilValid = Duration.between(now, validFrom);
+                ttl = durationUntilValid.plusDays(1);
+            }
+            redisTemplate.opsForValue().set(cacheKey, templateJson, ttl); // 예: 하루 동안 캐시
+        } catch (JsonProcessingException e) {
+            log.error("쿠폰 템플릿 JSON 직렬화 실패. Template ID: {}", savedTemplate.getId(), e);
+
+            String cacheKey = String.format(COUPON_TEMPLATE_KEY, savedTemplate.getId());
+            redisTemplate.delete(cacheKey);
+        }
 
         return CouponTemplateResponse.from(savedTemplate);
     }
@@ -61,7 +88,7 @@ public class CouponService {
         CouponTemplate couponTemplate=couponTemplateRepository.findByIdWithLock(request.getCouponTemplateId())
                 .orElseThrow(()->new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
 
-        validateCouponIssuance(partnerId, couponTemplate, request.getUserId());
+        validateCouponIssuance(partnerId, couponTemplate);
 
         couponTemplate.increaseIssuedQuantity();
 
@@ -76,7 +103,7 @@ public class CouponService {
         return CouponResponse.from(savedCoupon);
     }
 
-    private void validateCouponIssuance(Long partnerId, CouponTemplate template, String userId) {
+    private void validateCouponIssuance(Long partnerId, CouponTemplate template) {
         if (!template.getPartnerId().equals(partnerId)) {
             throw new CustomException(ErrorCode.FORBIDDEN_ACCESS);
         }
@@ -86,30 +113,16 @@ public class CouponService {
             throw new CustomException(ErrorCode.COUPON_NOT_IN_ISSUE_PERIOD);
         }
 
-        if (couponRepository.existsByCouponTemplateIdAndUserId(template.getId(), userId)) {
-            throw new CustomException(ErrorCode.COUPON_ALREADY_ISSUED);
-        }
     }
 
     public CouponIssueResponse issueCouponAsync(Long partnerId, CouponIssueRequest request) {
         Long templateId = request.getCouponTemplateId();
         String userId = request.getUserId();
-        String quantityKey = String.format(COUPON_QUANTITY_KEY, templateId);
 
-        String totalQuantityStr = redisTemplate.opsForValue().get(quantityKey);
-        Integer totalQuantity;
+        CouponTemplate couponTemplate=getCouponTemplateFromCacheOrDb(templateId);
+        Integer totalQuantity = couponTemplate.getTotalQuantity();
 
-        if (totalQuantityStr == null) {
-            CouponTemplate template = couponTemplateRepository.findById(templateId)
-                    .orElseThrow(() -> new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
-            totalQuantity = template.getTotalQuantity();
-
-            redisTemplate.opsForValue().set(quantityKey, totalQuantity.toString());
-
-        } else {
-
-            totalQuantity = Integer.parseInt(totalQuantityStr);
-        }
+        validateCouponIssuance(partnerId, couponTemplate);
 
 
         String countKey = String.format(COUPON_COUNT_KEY, templateId);
@@ -143,5 +156,28 @@ public class CouponService {
         return CouponIssueResponse.builder()
                 .message("쿠폰이 성공적으로 발급되었습니다.")
                 .build();
+    }
+
+    private CouponTemplate getCouponTemplateFromCacheOrDb(Long templateId) {
+        String cacheKey = String.format(COUPON_TEMPLATE_KEY, templateId);
+        try {
+            String templateJson = redisTemplate.opsForValue().get(cacheKey);
+
+            if (templateJson != null) {
+                return objectMapper.readValue(templateJson, CouponTemplate.class);
+            } else {
+                CouponTemplate templateFromDb = couponTemplateRepository.findById(templateId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
+
+                String newTemplateJson = objectMapper.writeValueAsString(templateFromDb);
+                redisTemplate.opsForValue().set(cacheKey, newTemplateJson, Duration.ofDays(1));
+
+                return templateFromDb;
+            }
+        } catch (JsonProcessingException e) {
+            log.error("쿠폰 템플릿 JSON 처리 실패. DB에서 직접 조회합니다. Template ID: {}", templateId, e);
+            return couponTemplateRepository.findById(templateId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
+        }
     }
 }
