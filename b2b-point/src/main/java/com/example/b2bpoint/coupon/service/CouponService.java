@@ -144,7 +144,7 @@ public class CouponService {
 
 
         try {
-            couponIssueProducer.send(new CouponIssueMessage(partnerId, templateId, userId, couponTemplate.getValidUntil()));
+            couponIssueProducer.send(new CouponIssueMessage(partnerId, templateId, userId));
         } catch (Exception e) {
 
             redisTemplate.opsForValue().decrement(countKey);

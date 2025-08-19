@@ -53,13 +53,15 @@ public class CouponIssueSyncService {
     }
 
     @Transactional
-    public void issueCouponWithoutLock(Long partnerId, Long couponTemplateId, String userId, LocalDateTime validUntil) {
+    public void issueCouponWithoutLock(Long partnerId, Long couponTemplateId, String userId) {
 
-        Coupon coupon = Coupon.issueBuilder()
+        CouponTemplate couponTemplate = couponTemplateRepository.findById(couponTemplateId)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 CouponTemplate ID: " + couponTemplateId));
+
+        Coupon coupon = Coupon.builder()
                 .partnerId(partnerId)
                 .userId(userId)
-                .couponTemplateId(couponTemplateId)
-
+                .couponTemplate(couponTemplate)
                 .build();
 
         Coupon savedCoupon = couponRepository.save(coupon);
