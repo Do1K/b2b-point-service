@@ -57,10 +57,11 @@ public class CouponService {
 
         CouponTemplate savedTemplate = couponTemplateRepository.save(couponTemplate);
 
+        CouponTemplateCacheDto cacheDto = CouponTemplateCacheDto.fromEntity(savedTemplate);
 
         try {
             String cacheKey = String.format(COUPON_TEMPLATE_KEY, savedTemplate.getId());
-            String templateJson = objectMapper.writeValueAsString(savedTemplate);
+            String templateJson = objectMapper.writeValueAsString(cacheDto);
 
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime validFrom = savedTemplate.getValidFrom();
@@ -88,7 +89,8 @@ public class CouponService {
         CouponTemplate couponTemplate=couponTemplateRepository.findByIdWithLock(request.getCouponTemplateId())
                 .orElseThrow(()->new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
 
-        validateCouponIssuance(partnerId, couponTemplate);
+
+        validateCouponIssuance(partnerId, CouponTemplateCacheDto.fromEntity(couponTemplate));
 
         couponTemplate.increaseIssuedQuantity();
 
@@ -103,7 +105,7 @@ public class CouponService {
         return CouponResponse.from(savedCoupon);
     }
 
-    private void validateCouponIssuance(Long partnerId, CouponTemplate template) {
+    private void validateCouponIssuance(Long partnerId, CouponTemplateCacheDto template) {
         if (!template.getPartnerId().equals(partnerId)) {
             throw new CustomException(ErrorCode.FORBIDDEN_ACCESS);
         }
@@ -119,7 +121,7 @@ public class CouponService {
         Long templateId = request.getCouponTemplateId();
         String userId = request.getUserId();
 
-        CouponTemplate couponTemplate=getCouponTemplateFromCacheOrDb(templateId);
+        CouponTemplateCacheDto couponTemplate=getCouponTemplateFromCacheOrDb(templateId);
         Integer totalQuantity = couponTemplate.getTotalQuantity();
 
         validateCouponIssuance(partnerId, couponTemplate);
@@ -158,26 +160,28 @@ public class CouponService {
                 .build();
     }
 
-    private CouponTemplate getCouponTemplateFromCacheOrDb(Long templateId) {
+    private CouponTemplateCacheDto getCouponTemplateFromCacheOrDb(Long templateId) {
         String cacheKey = String.format(COUPON_TEMPLATE_KEY, templateId);
         try {
             String templateJson = redisTemplate.opsForValue().get(cacheKey);
 
             if (templateJson != null) {
-                return objectMapper.readValue(templateJson, CouponTemplate.class);
+                return objectMapper.readValue(templateJson, CouponTemplateCacheDto.class);
             } else {
                 CouponTemplate templateFromDb = couponTemplateRepository.findById(templateId)
                         .orElseThrow(() -> new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
 
-                String newTemplateJson = objectMapper.writeValueAsString(templateFromDb);
+
+                String newTemplateJson = objectMapper.writeValueAsString(CouponTemplateCacheDto.fromEntity(templateFromDb));
                 redisTemplate.opsForValue().set(cacheKey, newTemplateJson, Duration.ofDays(1));
 
-                return templateFromDb;
+                return CouponTemplateCacheDto.fromEntity(templateFromDb);
             }
         } catch (JsonProcessingException e) {
             log.error("쿠폰 템플릿 JSON 처리 실패. DB에서 직접 조회합니다. Template ID: {}", templateId, e);
-            return couponTemplateRepository.findById(templateId)
+            CouponTemplate templateFromDb = couponTemplateRepository.findById(templateId)
                     .orElseThrow(() -> new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
+            return CouponTemplateCacheDto.fromEntity(templateFromDb);
         }
     }
 }
