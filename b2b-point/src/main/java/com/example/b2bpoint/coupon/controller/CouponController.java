@@ -1,10 +1,7 @@
 package com.example.b2bpoint.coupon.controller;
 
 import com.example.b2bpoint.common.dto.ApiResponse;
-import com.example.b2bpoint.coupon.dto.CouponIssueRequest;
-import com.example.b2bpoint.coupon.dto.CouponResponse;
-import com.example.b2bpoint.coupon.dto.CouponTemplateCreateRequest;
-import com.example.b2bpoint.coupon.dto.CouponTemplateResponse;
+import com.example.b2bpoint.coupon.dto.*;
 import com.example.b2bpoint.coupon.service.CouponService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,13 +40,13 @@ public class CouponController {
 
     @PostMapping("/issue-async") // 경로를 분리하거나 기존 경로를 대체
     @ResponseStatus(HttpStatus.OK) //
-    public ApiResponse<String> issueCouponAsync(
+    public ApiResponse<CouponIssueResponse> issueCouponAsync(
             @RequestAttribute Long partnerId,
             @RequestBody @Valid CouponIssueRequest request) {
 
-        couponService.issueCouponAsync(partnerId, request);
+        CouponIssueResponse response=couponService.issueCouponAsync(partnerId, request);
 
         // 사용자에게는 즉시 '성공'처럼 보이는 낙관적인 응답을 보냄
-        return ApiResponse.success("쿠폰 발급 요청이 성공적으로 접수되었습니다.");
+        return ApiResponse.success(response);
     }
 }
