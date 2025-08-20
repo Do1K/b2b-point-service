@@ -12,6 +12,8 @@ import com.example.b2bpoint.coupon.dto.CouponTemplateResponse;
 import com.example.b2bpoint.coupon.repository.CouponRepository;
 import com.example.b2bpoint.coupon.repository.CouponTemplateRepository;
 import com.example.b2bpoint.point.domain.PointWallet;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +23,8 @@ import org.mockito.BDDMockito;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,9 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CouponServiceTest {
@@ -42,6 +44,12 @@ class CouponServiceTest {
 
     @Mock
     private CouponRepository couponRepository;
+
+    @Mock
+    private RedisTemplate<String, String> redisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     private CouponService couponService;
@@ -57,6 +65,11 @@ class CouponServiceTest {
 
     @BeforeEach
     void setUp() {
+
+        ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+        //when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
         // 테스트에서 사용할 공통 쿠폰 템플릿 객체를 미리 생성
         availableTemplate = CouponTemplate.builder()
                 .partnerId(partnerId)

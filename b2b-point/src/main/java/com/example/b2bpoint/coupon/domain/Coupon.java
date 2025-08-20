@@ -45,8 +45,9 @@ public class Coupon extends BaseEntity {
     private LocalDateTime usedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coupon_template_id", nullable = false, updatable = false)
+    @JoinColumn(name = "coupon_template_id", nullable = false)
     private CouponTemplate couponTemplate;
+
 
 
     @Builder
@@ -59,6 +60,7 @@ public class Coupon extends BaseEntity {
         this.issuedAt = LocalDateTime.now();
         this.expiredAt = couponTemplate.getValidUntil();
     }
+
 
     public void use() {
         verifyCanBeUsed(); // 사용할 수 있는 상태인지 먼저 검증

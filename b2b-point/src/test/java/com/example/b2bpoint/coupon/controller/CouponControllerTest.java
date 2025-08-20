@@ -170,12 +170,12 @@ class CouponControllerTest {
         String requestBody = objectMapper.writeValueAsString(request);
 
         // when & then
-        mockMvc.perform(post("/api/v1/coupons/issue")
+        mockMvc.perform(post("/api/v1/coupons/issue-async")
                         .header("X-API-KEY", validApiKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody)
                 )
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.couponId").exists())
                 .andExpect(jsonPath("$.data.couponName").value("선착순 테스트 쿠폰"))
                 .andDo(print());
@@ -208,7 +208,7 @@ class CouponControllerTest {
     @Test
     void issueCoupon_concurrencyTest() throws Exception {
         // given
-        CouponTemplate template = createCouponTemplate(10);
+        CouponTemplate template = createCouponTemplate(10000);
         int numberOfThreads = 100;
         ExecutorService executorService = Executors.newFixedThreadPool(32);
         CountDownLatch latch = new CountDownLatch(numberOfThreads);
@@ -222,7 +222,7 @@ class CouponControllerTest {
                     CouponIssueRequest request = new CouponIssueRequest(template.getId(), userId);
                     String requestBody = objectMapper.writeValueAsString(request);
 
-                    mockMvc.perform(post("/api/v1/coupons/issue")
+                    mockMvc.perform(post("/api/v1/coupons/issue-async")
                                     .header("X-API-KEY", validApiKey)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(requestBody)

@@ -14,6 +14,7 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "C002", "허용되지 않은 요청입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C003", "서버에 오류가 발생했습니다."),
     INVALID_TYPE_VALUE(HttpStatus.BAD_REQUEST, "C004", "유효하지 않은 타입 값입니다."),
+    MESSAGING_SYSTEM_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C005", "메시지 시스템에 오류가 발생했습니다."),
 
     // Auth
     HANDLE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "A001", "접근 권한이 없습니다."),
