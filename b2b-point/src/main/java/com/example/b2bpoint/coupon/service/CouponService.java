@@ -3,6 +3,7 @@ package com.example.b2bpoint.coupon.service;
 import com.example.b2bpoint.common.exception.CustomException;
 import com.example.b2bpoint.common.exception.ErrorCode;
 import com.example.b2bpoint.coupon.application.CouponIssueProducer;
+import com.example.b2bpoint.coupon.application.CouponReader;
 import com.example.b2bpoint.coupon.domain.Coupon;
 import com.example.b2bpoint.coupon.domain.CouponTemplate;
 import com.example.b2bpoint.coupon.dto.*;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -31,6 +33,8 @@ public class CouponService {
     private final StringRedisTemplate redisTemplate;
     private final CouponIssueProducer couponIssueProducer;
     private final ObjectMapper objectMapper;
+    private final CouponReader couponReader;
+    private final Object lock = new Object();
 
     private static final String COUPON_COUNT_KEY = "coupon:template:%d:count";
     private static final String COUPON_USERS_KEY = "coupon:template:%d:users";
@@ -117,11 +121,12 @@ public class CouponService {
 
     }
 
+    @Transactional(propagation = Propagation.NEVER)
     public CouponIssueResponse issueCouponAsync(Long partnerId, CouponIssueRequest request) {
         Long templateId = request.getCouponTemplateId();
         String userId = request.getUserId();
 
-        CouponTemplateCacheDto couponTemplate=getCouponTemplateFromCacheOrDb(templateId);
+        CouponTemplateCacheDto couponTemplate=getCouponTemplateAvoidingStampede(templateId);
         Integer totalQuantity = couponTemplate.getTotalQuantity();
 
         validateCouponIssuance(partnerId, couponTemplate);
@@ -160,28 +165,31 @@ public class CouponService {
                 .build();
     }
 
-    private CouponTemplateCacheDto getCouponTemplateFromCacheOrDb(Long templateId) {
-        String cacheKey = String.format(COUPON_TEMPLATE_KEY, templateId);
+
+    private CouponTemplateCacheDto getCouponTemplateAvoidingStampede(Long templateId) {
+        CouponTemplateCacheDto dto = couponReader.findTemplateFromCache(templateId);
+        if (dto != null) {
+            return dto;
+        }
+
+        String lockKey = "lock:coupon:template:" + templateId;
         try {
-            String templateJson = redisTemplate.opsForValue().get(cacheKey);
+            Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", Duration.ofSeconds(5));
 
-            if (templateJson != null) {
-                return objectMapper.readValue(templateJson, CouponTemplateCacheDto.class);
+            if (Boolean.TRUE.equals(acquired)) {
+                try {
+                    return couponReader.findTemplateFromDbAndCache(templateId);
+                } finally {
+                    redisTemplate.delete(lockKey);
+                }
             } else {
-                CouponTemplate templateFromDb = couponTemplateRepository.findById(templateId)
-                        .orElseThrow(() -> new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
-
-
-                String newTemplateJson = objectMapper.writeValueAsString(CouponTemplateCacheDto.fromEntity(templateFromDb));
-                redisTemplate.opsForValue().set(cacheKey, newTemplateJson, Duration.ofDays(1));
-
-                return CouponTemplateCacheDto.fromEntity(templateFromDb);
+                Thread.sleep(100);
+                return getCouponTemplateAvoidingStampede(templateId); // 재귀 호출
             }
-        } catch (JsonProcessingException e) {
-            log.error("쿠폰 템플릿 JSON 처리 실패. DB에서 직접 조회합니다. Template ID: {}", templateId, e);
-            CouponTemplate templateFromDb = couponTemplateRepository.findById(templateId)
-                    .orElseThrow(() -> new CustomException(ErrorCode.COUPON_TEMPLATE_NOT_FOUND));
-            return CouponTemplateCacheDto.fromEntity(templateFromDb);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Lock acquisition interrupted", e);
         }
     }
+
 }
