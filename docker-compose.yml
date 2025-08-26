@@ -19,12 +19,17 @@ services: # 이 아래에 우리가 실행할 서비스(컨테이너)들을 정�
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
 
+    networks:
+      - b2b-point
+
   # 2. Redis 캐시 서비스
   redis-cache:
     image: redis:latest       # 최신 redis 이미지를 사용
     container_name: point-redis # 컨테이너 이름
     ports:
       - "6379:6379"           # 내 Mac의 6379 포트와 컨테이너의 6379 포트를 연결
+    networks:
+      - b2b-point
 
   # 3. RabbitMQ 메시지 큐 서비스
   rabbitmq-queue:
@@ -36,3 +41,10 @@ services: # 이 아래에 우리가 실행할 서비스(컨테이너)들을 정�
     environment:
       RABBITMQ_DEFAULT_USER: guest # 기본 사용자 ID
       RABBITMQ_DEFAULT_PASS: guest # 기본 사용자 비밀번호
+    networks:
+      - b2b-point
+
+
+networks:
+  b2b-point:
+    external: true

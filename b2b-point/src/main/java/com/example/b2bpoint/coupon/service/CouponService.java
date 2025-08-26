@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 @Slf4j
 public class CouponService {
 
@@ -40,7 +39,7 @@ public class CouponService {
     private static final String COUPON_USERS_KEY = "coupon:template:%d:users";
     private static final String COUPON_TEMPLATE_KEY = "coupon:template:%d";
 
-
+    @Transactional
     public CouponTemplateResponse createCouponTemplate(Long partnerId, CouponTemplateCreateRequest request){
         if(request.getValidFrom().isAfter(request.getValidUntil())){
             throw new IllegalArgumentException("유효 기간 설정이 잘못되었습니다. ");
@@ -121,7 +120,6 @@ public class CouponService {
 
     }
 
-    @Transactional(propagation = Propagation.NEVER)
     public CouponIssueResponse issueCouponAsync(Long partnerId, CouponIssueRequest request) {
         Long templateId = request.getCouponTemplateId();
         String userId = request.getUserId();
@@ -169,14 +167,18 @@ public class CouponService {
     private CouponTemplateCacheDto getCouponTemplateAvoidingStampede(Long templateId) {
         CouponTemplateCacheDto dto = couponReader.findTemplateFromCache(templateId);
         if (dto != null) {
+            log.info("캐시에서 찾았다!");
             return dto;
         }
 
+        log.info("캐시에서 못찾았다!");
         String lockKey = "lock:coupon:template:" + templateId;
         try {
             Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", Duration.ofSeconds(5));
 
             if (Boolean.TRUE.equals(acquired)) {
+                log.info("여기는 락");
+
                 try {
                     return couponReader.findTemplateFromDbAndCache(templateId);
                 } finally {
