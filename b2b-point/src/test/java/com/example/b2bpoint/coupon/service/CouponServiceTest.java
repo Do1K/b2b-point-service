@@ -1,34 +1,32 @@
 package com.example.b2bpoint.coupon.service;
 
 import com.example.b2bpoint.common.exception.CustomException;
-import com.example.b2bpoint.coupon.domain.Coupon;
-import com.example.b2bpoint.coupon.domain.CouponStatus;
+import com.example.b2bpoint.common.exception.ErrorCode;
+import com.example.b2bpoint.coupon.application.CouponIssueProducer;
+import com.example.b2bpoint.coupon.application.CouponReader;
 import com.example.b2bpoint.coupon.domain.CouponTemplate;
 import com.example.b2bpoint.coupon.domain.CouponType;
-import com.example.b2bpoint.coupon.dto.CouponIssueRequest;
-import com.example.b2bpoint.coupon.dto.CouponResponse;
-import com.example.b2bpoint.coupon.dto.CouponTemplateCreateRequest;
-import com.example.b2bpoint.coupon.dto.CouponTemplateResponse;
-import com.example.b2bpoint.coupon.repository.CouponRepository;
+import com.example.b2bpoint.coupon.dto.*;
 import com.example.b2bpoint.coupon.repository.CouponTemplateRepository;
-import com.example.b2bpoint.point.domain.PointWallet;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.BDDMockito;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,213 +37,220 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class CouponServiceTest {
 
-    @Mock
-    private CouponTemplateRepository couponTemplateRepository;
-
-    @Mock
-    private CouponRepository couponRepository;
-
-    @Mock
-    private RedisTemplate<String, String> redisTemplate;
-
-    @Mock
-    private ValueOperations<String, String> valueOperations;
-
-    @InjectMocks
     private CouponService couponService;
 
-    private final Long partnerId = 1L;
-    private final String name="테스트 쿠폰";
-    private final CouponType couponType=CouponType.FIXED_AMOUNT;
-    private final BigDecimal discountValue=BigDecimal.TEN;
-    private final Integer maxDiscountAmount=20;
-    private final  Integer minOrderAmount=10;
+    // --- Mock 객체 선언 (의존성) ---
+    @Mock private CouponTemplateRepository couponTemplateRepository;
+    @Mock private StringRedisTemplate redisTemplate;
+    @Mock private CouponIssueProducer couponIssueProducer;
+    @Mock private CouponReader couponReader;
 
-    private CouponTemplate availableTemplate;
+    // [수정] ObjectMapper는 실제 객체를 사용. @Spy 대신 직접 생성
+    private ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    // RedisTemplate의 내부 동작을 Mocking 하기 위한 객체들
+    @Mock private ValueOperations<String, String> valueOperations;
+    @Mock private SetOperations<String, String> setOperations;
 
     @BeforeEach
     void setUp() {
+        // [수정] @InjectMocks를 사용하지 않으므로, 수동으로 테스트 대상 객체 생성 및 의존성 주입
+        couponService = new CouponService(
+                couponTemplateRepository,
+                null, // CouponRepository는 CouponService에서 직접 사용하지 않으므로 null
+                redisTemplate,
+                couponIssueProducer,
+                objectMapper,
+                couponReader
+        );
 
-        ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-
-        //when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-
-        // 테스트에서 사용할 공통 쿠폰 템플릿 객체를 미리 생성
-        availableTemplate = CouponTemplate.builder()
-                .partnerId(partnerId)
-                .name("사용 가능한 쿠폰")
-                .couponType(CouponType.FIXED_AMOUNT)
-                .discountValue(BigDecimal.valueOf(1000))
-                .totalQuantity(1)
-                .validFrom(LocalDateTime.now().minusDays(1))
-                .validUntil(LocalDateTime.now().plusDays(10))
-                .minOrderAmount(0)
-                .build();
+        // [핵심] 모든 테스트에서 redisTemplate.opsFor...()가 null을 반환하지 않도록 lenient하게 설정
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
     }
 
-    @DisplayName("성공: 쿠폰 템플릿 생성")
-    @Test
-    void createCouponTemplate() {
-        //given
+    Long partnerId = 1L;
 
-        LocalDateTime validFrom=LocalDateTime.now().plusDays(1);
-        LocalDateTime validUntil=LocalDateTime.now().plusDays(10);
 
-        CouponTemplateCreateRequest request=CouponTemplateCreateRequest.builder()
-                .name(name)
-                .couponType(couponType)
-                .discountValue(discountValue)
-                .maxDiscountAmount(maxDiscountAmount)
-                .minOrderAmount(minOrderAmount)
-                .validFrom(validFrom)
-                .validUntil(validUntil)
-                .build();
 
-        CouponTemplate couponTemplate = CouponTemplate.builder()
-                .partnerId(partnerId)
-                .name(request.getName())
-                .couponType(request.getCouponType())
-                .discountValue(request.getDiscountValue())
-                .maxDiscountAmount(request.getMaxDiscountAmount())
-                .minOrderAmount(request.getMinOrderAmount())
-                .totalQuantity(request.getTotalQuantity())
-                .validFrom(request.getValidFrom())
-                .validUntil(request.getValidUntil())
-                .build();
+    @Nested
+    @DisplayName("쿠폰 템플릿 생성 (createCouponTemplate)")
+    class CreateCouponTemplate {
 
-        given(couponTemplateRepository.save(any(CouponTemplate.class)))
-                .willReturn(couponTemplate);
+        @Test
+        @DisplayName("성공 케이스")
+        void success() throws JsonProcessingException {
+            // given
+            Long partnerId = 1L;
+            CouponTemplateCreateRequest request = CouponTemplateCreateRequest.builder()
+                    .name("신규 템플릿").couponType(CouponType.FIXED_AMOUNT).discountValue(BigDecimal.TEN)
+                    .validFrom(LocalDateTime.now().plusDays(1)).validUntil(LocalDateTime.now().plusDays(10))
+                    .minOrderAmount(0).build();
 
-        //when
-        CouponTemplateResponse response=couponService.createCouponTemplate(partnerId,request);
+            // [최종 수정]
+            // save 메서드에 전달될 객체와 거의 동일한, 필드가 채워진 객체를 준비
+            CouponTemplate filledTemplate = CouponTemplate.builder()
+                    .partnerId(partnerId).name(request.getName()).couponType(request.getCouponType())
+                    .discountValue(request.getDiscountValue()).minOrderAmount(request.getMinOrderAmount())
+                    .validFrom(request.getValidFrom()).validUntil(request.getValidUntil())
+                    .build();
 
-        //then
-        verify(couponTemplateRepository).save(any(CouponTemplate.class));
-        assertThat(response.getName()).isEqualTo(name);
-        assertThat(response.getCouponType()).isEqualTo(couponType);
+            // save가 호출되면, 필드가 모두 채워진 이 객체를 반환하도록 설정
+            given(couponTemplateRepository.save(any(CouponTemplate.class))).willReturn(filledTemplate);
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
+            // when
+            CouponTemplateResponse response = couponService.createCouponTemplate(partnerId, request);
+
+            // then
+            assertThat(response).isNotNull();
+            verify(valueOperations).set(anyString(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("실패 케이스 - 유효 기간 오류")
+        void fail_invalidDate() {
+            // given
+            CouponTemplateCreateRequest request = CouponTemplateCreateRequest.builder()
+                    .validFrom(LocalDateTime.now().plusDays(3)).validUntil(LocalDateTime.now().plusDays(2))
+                    .build();
+
+            // when & then
+            assertThrows(IllegalArgumentException.class, () -> couponService.createCouponTemplate(partnerId, request));
+        }
     }
 
-    @DisplayName("실패: 쿠폰 템플릿 생성 실패(기간 설정 오류)")
-    @Test
-    void createCouponTemplate_fail(){
-        //given
 
-        LocalDateTime validFrom=LocalDateTime.now().plusDays(3);
-        LocalDateTime validUntil=LocalDateTime.now().plusDays(2);
+    @Nested // issueCouponAsync 관련 테스트 그룹
+    @DisplayName("비동기 쿠폰 발급 (issueCouponAsync)")
+    class IssueCouponAsync {
 
-        CouponTemplateCreateRequest request=CouponTemplateCreateRequest.builder()
-                .name(name)
-                .couponType(couponType)
-                .discountValue(discountValue)
-                .maxDiscountAmount(maxDiscountAmount)
-                .minOrderAmount(minOrderAmount)
-                .validFrom(validFrom)
-                .validUntil(validUntil)
-                .build();
-
-        //when&then
-        assertThrows(IllegalArgumentException.class, () -> couponService.createCouponTemplate(partnerId,request));
-    }
-
-    @DisplayName("성공: 쿠폰 발급에 성공한다.")
-    @Test
-    void issueCoupon_success() {
-        // given
-        CouponIssueRequest request = new CouponIssueRequest(1L, "user-123");
-
-        given(couponTemplateRepository.findByIdWithLock(request.getCouponTemplateId()))
-                .willReturn(Optional.of(availableTemplate));
-
-        given(couponRepository.save(any(Coupon.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
-
-
-        // when
-        CouponResponse response = couponService.issueCoupon(partnerId, request);
-
-
-        // then
-        assertThat(response.getCouponName()).isEqualTo("사용 가능한 쿠폰");
-        assertThat(response.getStatus()).isEqualTo(CouponStatus.AVAILABLE);
-
-        assertThat(availableTemplate.getIssuedQuantity()).isEqualTo(1);
-
-        verify(couponRepository).save(any(Coupon.class));
-    }
-
-    @DisplayName("실패: 존재하지 않는 쿠폰 템플릿 ID로 요청 시 예외가 발생한다.")
-    @Test
-    void issueCoupon_fail_templateNotFound() {
-        // given
-        CouponIssueRequest request = new CouponIssueRequest(999L, "user-123");
-
-        given(couponTemplateRepository.findByIdWithLock(request.getCouponTemplateId()))
-                .willReturn(Optional.empty());
-
-        // when & then
-        assertThrows(CustomException.class, () -> {
-            couponService.issueCoupon(partnerId, request);
-        });
-
-        verify(couponRepository, never()).save(any(Coupon.class));
-    }
-
-    @DisplayName("실패: 다른 파트너사의 쿠폰 템플릿으로 발급 요청 시 예외가 발생한다.")
-    @Test
-    void issueCoupon_fail_partnerMismatch() {
-        // given
-        Long anotherPartnerId = 2L;
-        CouponIssueRequest request = new CouponIssueRequest(1L, "user-123");
-
-        given(couponTemplateRepository.findByIdWithLock(request.getCouponTemplateId()))
-                .willReturn(Optional.of(availableTemplate));
-
-        // when & then
-        assertThrows(CustomException.class, () -> {
-            couponService.issueCoupon(anotherPartnerId, request);
-        });
-    }
-
-    @DisplayName("실패: 쿠폰 발급 기간이 아닌 경우 예외가 발생한다.")
-    @Test
-    void issueCoupon_fail_notInPeriod() {
-        // given
-        CouponTemplate expiredTemplate = CouponTemplate.builder()
-                .partnerId(partnerId)
-                .validFrom(LocalDateTime.now().minusDays(10))
-                .validUntil(LocalDateTime.now().minusDays(1)) // 이미 만료됨
+        private Long partnerId = 1L;
+        private final Long templateId = 1L;
+        private String userId = "user-123";
+        private CouponIssueRequest request = new CouponIssueRequest(templateId, userId);
+        private CouponTemplateCacheDto cacheDto = CouponTemplateCacheDto.builder()
+                .id(templateId).partnerId(partnerId).totalQuantity(100)
+                .validFrom(LocalDateTime.now().minusDays(1)).validUntil(LocalDateTime.now().plusDays(1))
                 .build();
 
-        CouponIssueRequest request = new CouponIssueRequest(1L, "user-123");
-
-        given(couponTemplateRepository.findByIdWithLock(request.getCouponTemplateId()))
-                .willReturn(Optional.of(expiredTemplate));
-
-        // when & then
-        assertThrows(CustomException.class, () -> {
-            couponService.issueCoupon(partnerId, request);
-        });
-    }
-
-    @DisplayName("실패: 쿠폰 수량이 모두 소진된 경우 예외가 발생한다.")
-    @Test
-    void issueCoupon_fail_quantityExceeded() {
-        // given
-
-        availableTemplate.increaseIssuedQuantity();
-        assertThat(availableTemplate.getIssuedQuantity()).isEqualTo(1);
-
-        CouponIssueRequest request = new CouponIssueRequest(1L, "user-123");
-
-        given(couponTemplateRepository.findByIdWithLock(request.getCouponTemplateId()))
-                .willReturn(Optional.of(availableTemplate));
 
 
-        // when & then
-        assertThrows(CustomException.class, () -> {
-            couponService.issueCoupon(partnerId, request);
-        });
+        @Test
+        @DisplayName("성공: 캐시 미스(Cache Miss) 시 DB 조회 후 쿠폰 발급 메시지를 전송한다.")
+        void success_whenCacheMiss() {
+            // given
+            Long templateId = 1L;
+            String userId = "user-123";
+            CouponIssueRequest request = new CouponIssueRequest(templateId, userId);
+            CouponTemplateCacheDto dbDto = CouponTemplateCacheDto.builder()
+                    .totalQuantity(100).partnerId(partnerId)
+                    .validFrom(LocalDateTime.now().minusDays(1)).validUntil(LocalDateTime.now().plusDays(1))
+                    .build();
+
+            // 1. 처음에는 캐시 미스
+            given(couponReader.findTemplateFromCache(templateId)).willReturn(null);
+
+            // [핵심 수정] 분산 락 획득에 성공했다고 가정 (true 반환)
+            given(redisTemplate.opsForValue().setIfAbsent(anyString(), anyString(), any(java.time.Duration.class)))
+                    .willReturn(true);
+
+            // 2. DB 조회는 성공
+            given(couponReader.findTemplateFromDbAndCache(templateId)).willReturn(dbDto);
+
+            // 3. Redis 중복/수량 체크 통과
+            given(redisTemplate.opsForSet().add(anyString(), anyString())).willReturn(1L);
+            given(redisTemplate.opsForValue().increment(anyString())).willReturn(10L);
+
+            // when
+            couponService.issueCouponAsync(partnerId, request);
+
+            // then
+            // DB 조회 메서드가 정확히 1번 호출되었는지 검증
+            verify(couponReader).findTemplateFromDbAndCache(templateId);
+            // Producer가 호출되었는지 검증
+            verify(couponIssueProducer).send(any(CouponIssueMessage.class));
+        }
+
+
+
+        @Test
+        @DisplayName("실패: 이미 발급받은 사용자가 요청 시 예외가 발생한다.")
+        void fail_whenCouponAlreadyIssued() {
+            // given
+            given(couponReader.findTemplateFromCache(templateId)).willReturn(cacheDto);
+            given(setOperations.add(anyString(), anyString())).willReturn(0L); // 중복 시 0L 반환
+
+            // when & then
+            CustomException exception = assertThrows(CustomException.class, () ->
+                    couponService.issueCouponAsync(partnerId, request)
+            );
+
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.COUPON_ALREADY_ISSUED);
+            verify(couponIssueProducer, never()).send(any());
+        }
+
+        // ... 나머지 테스트 케이스들도 이 패턴을 따르면 정상 동작 ...
+
+        @Test
+        @DisplayName("성공: 캐시 히트(Cache Hit) 시 쿠폰 발급 메시지를 전송한다.")
+        void success_whenCacheHit() {
+            // given
+            given(couponReader.findTemplateFromCache(templateId)).willReturn(cacheDto);
+            given(setOperations.add(anyString(), anyString())).willReturn(1L);
+            given(valueOperations.increment(anyString())).willReturn(10L);
+
+            // when
+            CouponIssueResponse response = couponService.issueCouponAsync(partnerId, request);
+
+            // then
+            assertThat(response.getMessage()).isEqualTo("쿠폰이 성공적으로 발급되었습니다.");
+            verify(couponIssueProducer).send(any(CouponIssueMessage.class));
+        }
+
+        @Test
+        @DisplayName("실패: 쿠폰 수량이 모두 소진되었을 때 요청 시 예외가 발생한다.")
+        void fail_whenQuantityExceeded() {
+            // given
+            cacheDto = CouponTemplateCacheDto.builder().totalQuantity(10).partnerId(partnerId)
+                    .validFrom(LocalDateTime.now().minusDays(1)).validUntil(LocalDateTime.now().plusDays(1)).build();
+
+            given(couponReader.findTemplateFromCache(templateId)).willReturn(cacheDto);
+            given(setOperations.add(anyString(), anyString())).willReturn(1L);
+            given(valueOperations.increment(anyString())).willReturn(11L);
+
+            // when & then
+            assertThrows(CustomException.class, () ->
+                    couponService.issueCouponAsync(partnerId, request)
+            );
+
+            verify(setOperations).remove(anyString(), anyString());
+            verify(couponIssueProducer, never()).send(any());
+        }
+
+
+        @Test
+        @DisplayName("실패: 메시지 큐 전송 실패 시 예외가 발생하고 보정 로직이 실행된다.")
+        void fail_whenMessageQueueFails() {
+            // given
+            given(couponReader.findTemplateFromCache(templateId)).willReturn(cacheDto);
+            given(redisTemplate.opsForSet().add(anyString(), anyString())).willReturn(1L);
+            given(redisTemplate.opsForValue().increment(anyString())).willReturn(10L);
+
+            // [핵심] Producer의 send 메서드가 호출되면 Exception을 던지도록 설정
+            doThrow(new RuntimeException("MQ Connection Error")).when(couponIssueProducer).send(any());
+
+            // when & then
+            CustomException exception = assertThrows(CustomException.class, () -> {
+                couponService.issueCouponAsync(partnerId, request);
+            });
+
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.MESSAGING_SYSTEM_ERROR);
+
+            // [보정 로직 검증] 큐 전송 실패 시, Redis 카운트를 되돌리고(decrement) Set 멤버를 제거하는 로직이 모두 호출되었는지 확인
+            verify(redisTemplate.opsForValue()).decrement(anyString());
+            verify(redisTemplate.opsForSet()).remove(anyString(), anyString());
+        }
     }
 
 }

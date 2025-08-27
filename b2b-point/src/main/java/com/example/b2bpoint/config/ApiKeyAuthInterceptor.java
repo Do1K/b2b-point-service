@@ -9,8 +9,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.time.Duration;
 
 @Slf4j
 @Component
@@ -18,6 +21,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class ApiKeyAuthInterceptor implements HandlerInterceptor {
 
     private final PartnerRepository partnerRepository;
+    private final StringRedisTemplate redisTemplate;
     private static final String API_KEY_HEADER = "X-API-KEY";
 
     @Override
@@ -31,18 +35,34 @@ public class ApiKeyAuthInterceptor implements HandlerInterceptor {
             throw new CustomException(ErrorCode.INVALID_API_KEY);
         }
 
-        Partner partner = partnerRepository.findByApiKey(apiKey)
-                .orElseThrow(() -> {
-                    log.warn("유효하지 않은 API Key: {}", apiKey);
-                    return new CustomException(ErrorCode.INVALID_API_KEY);
-                });
+        // --- 캐싱 로직 시작 ---
+        String cacheKey = "partner:apiKey:" + apiKey;
+        String cachedPartnerId = redisTemplate.opsForValue().get(cacheKey);
+        Long partnerId;
 
-        if(partner.getStatus()!= PartnerStatus.ACTIVE){
-            log.warn("비활성화 파트너: {}", partner.getName());
-            throw new CustomException(ErrorCode.PARTNER_NOT_ACTIVE);
+        if (cachedPartnerId != null) {
+            partnerId = Long.parseLong(cachedPartnerId);
+            log.info("Partner ID from cache: {}", partnerId);
+
+        } else {
+            Partner partner = partnerRepository.findByApiKey(apiKey)
+                    .orElseThrow(() -> {
+                        log.warn("유효하지 않은 API Key: {}", apiKey);
+                        return new CustomException(ErrorCode.INVALID_API_KEY);
+                    });
+
+            if (partner.getStatus() != PartnerStatus.ACTIVE) {
+                log.warn("비활성화 파트너: {}", partner.getName());
+                throw new CustomException(ErrorCode.PARTNER_NOT_ACTIVE);
+            }
+
+            partnerId = partner.getId();
+
+            redisTemplate.opsForValue().set(cacheKey, partnerId.toString(), Duration.ofHours(1));
         }
+        // --- 캐싱 로직 끝 ---
 
-        request.setAttribute("partnerId", partner.getId());
+        request.setAttribute("partnerId", partnerId);
 
         return true;
 

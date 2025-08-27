@@ -45,8 +45,12 @@ public class Coupon extends BaseEntity {
     private LocalDateTime usedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coupon_template_id", nullable = false)
+    @JoinColumn(name = "coupon_template_id", insertable = false, updatable = false)
     private CouponTemplate couponTemplate;
+
+    @Column(name = "coupon_template_id")
+    private Long couponTemplateId;
+
 
 
 
@@ -59,6 +63,36 @@ public class Coupon extends BaseEntity {
         this.status = CouponStatus.AVAILABLE;
         this.issuedAt = LocalDateTime.now();
         this.expiredAt = couponTemplate.getValidUntil();
+    }
+
+    @Builder(builderMethodName = "issueBuilder")
+    public Coupon(Long partnerId, String userId, Long couponTemplateId, LocalDateTime validUntil) {
+        this.code = UUID.randomUUID().toString();
+        this.partnerId = partnerId;
+        this.userId = userId;
+        this.couponTemplateId = couponTemplateId; // ID를 직접 할당
+        this.status = CouponStatus.AVAILABLE;
+        this.issuedAt = LocalDateTime.now();
+        this.expiredAt = validUntil;
+    }
+
+    private Coupon(Long partnerId, String userId, CouponTemplate couponTemplate, Long couponTemplateId, LocalDateTime expiredAt) {
+        this.code = UUID.randomUUID().toString();
+        this.partnerId = partnerId;
+        this.userId = userId;
+        this.couponTemplate = couponTemplate;
+        this.couponTemplateId = couponTemplateId;
+        this.status = CouponStatus.AVAILABLE;
+        this.issuedAt = LocalDateTime.now();
+        this.expiredAt = expiredAt;
+    }
+
+    public static Coupon createFromMessage(Long partnerId, String userId, Long couponTemplateId, LocalDateTime expiredAt) {
+        if (couponTemplateId == null || expiredAt == null) {
+            throw new IllegalArgumentException("couponTemplateId and expiredAt cannot be null");
+        }
+        // couponTemplate 객체는 null로 두고, ID와 만료일만 직접 설정
+        return new Coupon(partnerId, userId, null, couponTemplateId, expiredAt);
     }
 
 

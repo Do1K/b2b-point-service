@@ -21,9 +21,10 @@ public class CouponIssueConsumer {
             couponIssueSyncService.issueCouponWithoutLock(
                     message.getPartnerId(),
                     message.getCouponTemplateId(),
-                    message.getUserId()
+                    message.getUserId(),
+                    message.getValidUntil()
             );
-            log.info("Coupon issued successfully for userId: {}", message.getUserId());
+            log.info("[{}] Coupon issued successfully for userId: {}",message.getCouponTemplateId(), message.getUserId());
         } catch (Exception e) {
             // [중요] 메시지 처리 실패 시 로깅 및 예외 처리
             // 실제 서비스에서는 Dead Letter Queue(DLQ)로 메시지를 보내 재처리하거나 분석해야 함
