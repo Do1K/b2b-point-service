@@ -149,7 +149,7 @@ public class CouponService {
 
 
         try {
-            couponIssueProducer.send(new CouponIssueMessage(partnerId, templateId, userId));
+            couponIssueProducer.send(new CouponIssueMessage(partnerId, templateId, userId,couponTemplate.getValidUntil()));
         } catch (Exception e) {
 
             redisTemplate.opsForValue().decrement(countKey);
@@ -167,11 +167,9 @@ public class CouponService {
     private CouponTemplateCacheDto getCouponTemplateAvoidingStampede(Long templateId) {
         CouponTemplateCacheDto dto = couponReader.findTemplateFromCache(templateId);
         if (dto != null) {
-            log.info("캐시에서 찾았다!");
             return dto;
         }
 
-        log.info("캐시에서 못찾았다!");
         String lockKey = "lock:coupon:template:" + templateId;
         try {
             Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", Duration.ofSeconds(5));

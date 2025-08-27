@@ -14,9 +14,10 @@ public class CouponIssueMessage {
     private String userId;
     private LocalDateTime validUntil;
 
-    public CouponIssueMessage(Long partnerId, Long couponTemplateId, String userId) {
+    public CouponIssueMessage(Long partnerId, Long couponTemplateId, String userId, LocalDateTime validUntil) {
         this.partnerId = partnerId;
         this.couponTemplateId = couponTemplateId;
         this.userId = userId;
+        this.validUntil = validUntil;
     }
 }
