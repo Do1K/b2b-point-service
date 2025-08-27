@@ -37,7 +37,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class CouponServiceTest {
 
-    // [수정] @InjectMocks 대신, 테스트 대상 객체를 직접 생성
     private CouponService couponService;
 
     // --- Mock 객체 선언 (의존성) ---
