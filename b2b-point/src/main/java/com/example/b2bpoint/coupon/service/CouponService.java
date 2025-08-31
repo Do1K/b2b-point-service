@@ -175,7 +175,6 @@ public class CouponService {
             Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", Duration.ofSeconds(5));
 
             if (Boolean.TRUE.equals(acquired)) {
-                log.info("여기는 락");
 
                 try {
                     return couponReader.findTemplateFromDbAndCache(templateId);
@@ -184,7 +183,7 @@ public class CouponService {
                 }
             } else {
                 Thread.sleep(100);
-                return getCouponTemplateAvoidingStampede(templateId); // 재귀 호출
+                return getCouponTemplateAvoidingStampede(templateId);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
