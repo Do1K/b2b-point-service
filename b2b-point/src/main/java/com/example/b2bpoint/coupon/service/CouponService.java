@@ -35,7 +35,6 @@ public class CouponService {
     private final CouponIssueProducer couponIssueProducer;
     private final ObjectMapper objectMapper;
     private final CouponReader couponReader;
-    private final Object lock = new Object();
 
     private static final String COUPON_COUNT_KEY = "coupon:template:%d:count";
     private static final String COUPON_USERS_KEY = "coupon:template:%d:users";
