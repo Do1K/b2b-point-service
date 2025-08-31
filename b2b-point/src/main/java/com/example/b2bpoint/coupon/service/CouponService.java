@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -189,6 +191,17 @@ public class CouponService {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Lock acquisition interrupted", e);
         }
+    }
+
+    public List<CouponResponse> getCoupons(Long partnerId, String userId) {
+
+        List<Coupon> coupons=couponRepository.findByPartnerIdAndUserId(partnerId,userId);
+        List<CouponResponse> response=new ArrayList<>();
+        coupons.forEach(coupon->{
+            response.add(CouponResponse.from(coupon));
+        });
+        return response;
+
     }
 
 }

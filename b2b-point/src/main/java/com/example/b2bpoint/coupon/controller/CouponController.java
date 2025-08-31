@@ -1,12 +1,15 @@
 package com.example.b2bpoint.coupon.controller;
 
 import com.example.b2bpoint.common.dto.ApiResponse;
+import com.example.b2bpoint.coupon.domain.Coupon;
 import com.example.b2bpoint.coupon.dto.*;
 import com.example.b2bpoint.coupon.service.CouponService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/coupons")
@@ -38,15 +41,23 @@ public class CouponController {
         return ApiResponse.success(response);
     }
 
-    @PostMapping("/issue-async") // 경로를 분리하거나 기존 경로를 대체
-    @ResponseStatus(HttpStatus.OK) //
+    @PostMapping("/issue-async")
+    @ResponseStatus(HttpStatus.OK)
     public ApiResponse<CouponIssueResponse> issueCouponAsync(
             @RequestAttribute Long partnerId,
             @RequestBody @Valid CouponIssueRequest request) {
 
         CouponIssueResponse response=couponService.issueCouponAsync(partnerId, request);
 
-        // 사용자에게는 즉시 '성공'처럼 보이는 낙관적인 응답을 보냄
         return ApiResponse.success(response);
+    }
+
+    @GetMapping("/{userId}")
+    public ApiResponse<List<CouponResponse>> getCoupons(
+            @RequestAttribute Long partnerId,
+            @PathVariable String userId) {
+
+        List<CouponResponse> coupons=couponService.getCoupons(partnerId,userId);
+        return ApiResponse.success(coupons);
     }
 }
