@@ -27,6 +27,7 @@ public class CouponReader {
 
     public CouponTemplateCacheDto findTemplateFromCache(Long templateId) {
         String cacheKey = String.format(COUPON_TEMPLATE_KEY, templateId);
+
         String templateJson = redisTemplate.opsForValue().get(cacheKey);
         if (templateJson != null) {
             try {
