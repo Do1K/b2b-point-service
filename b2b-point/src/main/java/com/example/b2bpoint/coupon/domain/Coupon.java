@@ -53,6 +53,7 @@ public class Coupon extends BaseEntity {
 
 
 
+
     @Builder
     public Coupon(Long partnerId, String userId, CouponTemplate couponTemplate) {
         this.code = UUID.randomUUID().toString();
