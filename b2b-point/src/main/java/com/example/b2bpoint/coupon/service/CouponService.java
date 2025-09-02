@@ -192,7 +192,7 @@ public class CouponService {
 
     public List<CouponResponse> getCoupons(Long partnerId, String userId) {
 
-        List<Coupon> coupons=couponRepository.findByPartnerIdAndUserId(partnerId,userId);
+        List<Coupon> coupons=couponRepository.findCouponsWithTemplateByUserIdAndPartnerId(partnerId, userId);
         List<CouponResponse> response=new ArrayList<>();
         coupons.forEach(coupon->{
             response.add(CouponResponse.from(coupon));
