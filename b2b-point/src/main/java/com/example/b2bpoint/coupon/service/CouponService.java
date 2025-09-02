@@ -136,14 +136,14 @@ public class CouponService {
 
         Long addedCount = redisTemplate.opsForSet().add(usersKey, userId);
         if (addedCount == 0) {
-            throw new CustomException(ErrorCode.COUPON_ALREADY_ISSUED);
+            return CouponIssueResponse.fail(ErrorCode.COUPON_ALREADY_ISSUED);
         }
 
         Long currentCount = redisTemplate.opsForValue().increment(countKey);
 
         if (currentCount > totalQuantity) {
             redisTemplate.opsForSet().remove(usersKey, userId);
-            throw new CustomException(ErrorCode.COUPON_ISSUE_QUANTITY_EXCEEDED);
+            return CouponIssueResponse.fail(ErrorCode.COUPON_ISSUE_QUANTITY_EXCEEDED);
         }
 
         // --- 여기까지 통과하면 '성공 대상'으로 확정 ---
@@ -159,9 +159,7 @@ public class CouponService {
         }
 
 
-        return CouponIssueResponse.builder()
-                .message("쿠폰이 성공적으로 발급되었습니다.")
-                .build();
+        return CouponIssueResponse.success("\"쿠폰이 성공적으로 발급되었습니다.\"");
     }
 
 
