@@ -1,8 +1,11 @@
 package com.example.b2bpoint.coupon.controller;
 
+import com.example.b2bpoint.coupon.domain.Coupon;
+import com.example.b2bpoint.coupon.domain.CouponStatus;
 import com.example.b2bpoint.coupon.domain.CouponTemplate;
 import com.example.b2bpoint.coupon.domain.CouponType;
 import com.example.b2bpoint.coupon.dto.CouponIssueRequest;
+import com.example.b2bpoint.coupon.dto.CouponResponse;
 import com.example.b2bpoint.coupon.dto.CouponTemplateCreateRequest;
 import com.example.b2bpoint.coupon.repository.CouponRepository;
 import com.example.b2bpoint.coupon.repository.CouponTemplateRepository;
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -228,6 +232,50 @@ class CouponControllerTest {
                 .validFrom(LocalDateTime.now().minusDays(1)).validUntil(LocalDateTime.now().plusDays(30))
                 .minOrderAmount(0).build();
         return couponTemplateRepository.save(template);
+    }
+
+    @DisplayName("성공: 특정 사용자의 쿠폰 목록을 조회한다")
+    @Transactional
+    @Test
+    void getCoupons_Success() throws Exception {
+        // given
+        Long partnerId = testPartner.getId();
+        String userId = "test-user-123";
+
+        CouponTemplate template1 = createCouponTemplate(1);
+        CouponTemplate template2 = createCouponTemplate(2);
+
+
+        Coupon coupon1 = Coupon.builder()
+                .partnerId(partnerId)
+                .userId(userId)
+                .couponTemplate(template1)
+                .build();
+
+        Coupon coupon2 = Coupon.builder()
+                .partnerId(partnerId)
+                .userId(userId)
+                .couponTemplate(template2)
+                .build();
+
+
+
+        couponRepository.save(coupon1);
+        couponRepository.save(coupon2);
+
+
+        // when & then
+        mockMvc.perform(
+                        get("/api/v1/coupons/{userId}", userId)
+                                .header("X-API-KEY", validApiKey)
+                                .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].couponName").value("선착순 테스트 쿠폰"));
     }
 
 }
