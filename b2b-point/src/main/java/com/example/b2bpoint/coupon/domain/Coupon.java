@@ -60,9 +60,13 @@ public class Coupon extends BaseEntity {
         this.partnerId = partnerId;
         this.userId = userId;
         this.couponTemplate = couponTemplate;
+        if (couponTemplate != null) {
+            this.couponTemplateId = couponTemplate.getId();
+            this.expiredAt = couponTemplate.getValidUntil();
+        }
         this.status = CouponStatus.AVAILABLE;
         this.issuedAt = LocalDateTime.now();
-        this.expiredAt = couponTemplate.getValidUntil();
+
     }
 
     @Builder(builderMethodName = "issueBuilder")

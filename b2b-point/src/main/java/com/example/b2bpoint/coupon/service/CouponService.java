@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +35,6 @@ public class CouponService {
     private final CouponIssueProducer couponIssueProducer;
     private final ObjectMapper objectMapper;
     private final CouponReader couponReader;
-    private final Object lock = new Object();
 
     private static final String COUPON_COUNT_KEY = "coupon:template:%d:count";
     private static final String COUPON_USERS_KEY = "coupon:template:%d:users";
@@ -135,14 +136,14 @@ public class CouponService {
 
         Long addedCount = redisTemplate.opsForSet().add(usersKey, userId);
         if (addedCount == 0) {
-            throw new CustomException(ErrorCode.COUPON_ALREADY_ISSUED);
+            return CouponIssueResponse.fail(ErrorCode.COUPON_ALREADY_ISSUED);
         }
 
         Long currentCount = redisTemplate.opsForValue().increment(countKey);
 
         if (currentCount > totalQuantity) {
             redisTemplate.opsForSet().remove(usersKey, userId);
-            throw new CustomException(ErrorCode.COUPON_ISSUE_QUANTITY_EXCEEDED);
+            return CouponIssueResponse.fail(ErrorCode.COUPON_ISSUE_QUANTITY_EXCEEDED);
         }
 
         // --- 여기까지 통과하면 '성공 대상'으로 확정 ---
@@ -158,9 +159,7 @@ public class CouponService {
         }
 
 
-        return CouponIssueResponse.builder()
-                .message("쿠폰이 성공적으로 발급되었습니다.")
-                .build();
+        return CouponIssueResponse.success("\"쿠폰이 성공적으로 발급되었습니다.\"");
     }
 
 
@@ -189,6 +188,17 @@ public class CouponService {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Lock acquisition interrupted", e);
         }
+    }
+
+    public List<CouponResponse> getCoupons(Long partnerId, String userId) {
+
+        List<Coupon> coupons=couponRepository.findByPartnerIdAndUserId(partnerId,userId);
+        List<CouponResponse> response=new ArrayList<>();
+        coupons.forEach(coupon->{
+            response.add(CouponResponse.from(coupon));
+        });
+        return response;
+
     }
 
 }

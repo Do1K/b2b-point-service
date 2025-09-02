@@ -32,8 +32,6 @@ public class CouponResponse {
         return CouponResponse.builder()
                 .couponId(coupon.getId())
                 .couponCode(coupon.getCode())
-                // LAZY 로딩이지만, 이 시점에 coupon.getCouponTemplate()을 호출하면
-                // JPA가 프록시 객체를 초기화하며 실제 템플릿 정보를 DB에서 조회해 옴
                 .couponName(coupon.getCouponTemplate().getName())
                 .status(coupon.getStatus())
                 .issuedAt(coupon.getIssuedAt())
