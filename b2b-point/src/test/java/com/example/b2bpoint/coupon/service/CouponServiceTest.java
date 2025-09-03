@@ -181,10 +181,10 @@ class CouponServiceTest {
             given(valueOperations.increment(anyString())).willReturn(10L);
 
             // when
-            CouponIssueResponse response = couponService.issueCouponAsync(partnerId, request);
+            CouponIssueResult result = couponService.issueCouponAsync(partnerId, request);
 
             // then
-            assertThat(response.getMessage()).isEqualTo("쿠폰이 성공적으로 발급되었습니다.");
+            assertThat(result.getData().getMessage()).isEqualTo("쿠폰이 성공적으로 발급되었습니다.");
             verify(couponIssueProducer).send(any(CouponIssueMessage.class));
         }
 

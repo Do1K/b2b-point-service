@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -63,7 +65,22 @@ public class CouponIssueSyncService {
     }
 
     @Transactional
-    public void issueCouponsInBatch(List<CouponIssueMessage> messages) {
+    public void issueCouponsAndUpdateQuantityInBatch(List<CouponIssueMessage> messages){
+        issueCouponsInBatch(messages);
+
+        Map<Long, Long> issueCountByTemplateId = messages.stream()
+                .collect(Collectors.groupingBy(
+                        CouponIssueMessage::getCouponTemplateId,
+                        Collectors.counting()
+                ));
+
+
+        issueCountByTemplateId.forEach((templateId, count) -> {
+            couponTemplateRepository.increaseIssuedQuantity(templateId, count.intValue());
+        });
+    }
+
+    private void issueCouponsInBatch(List<CouponIssueMessage> messages) {
         List<Coupon> couponsToSave = messages.stream()
                 .map(message -> Coupon.createFromMessage(
                         message.getPartnerId(),

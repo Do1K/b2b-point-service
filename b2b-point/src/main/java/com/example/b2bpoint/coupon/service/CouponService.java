@@ -77,7 +77,7 @@ public class CouponService {
                 Duration durationUntilValid = Duration.between(now, validFrom);
                 ttl = durationUntilValid.plusDays(1);
             }
-            redisTemplate.opsForValue().set(cacheKey, templateJson, ttl); // 예: 하루 동안 캐시
+            redisTemplate.opsForValue().set(cacheKey, templateJson, ttl);
         } catch (JsonProcessingException e) {
             log.error("쿠폰 템플릿 JSON 직렬화 실패. Template ID: {}", savedTemplate.getId(), e);
 
@@ -121,7 +121,7 @@ public class CouponService {
 
     }
 
-    public CouponIssueResponse issueCouponAsync(Long partnerId, CouponIssueRequest request) {
+    public CouponIssueResult issueCouponAsync(Long partnerId, CouponIssueRequest request) {
         Long templateId = request.getCouponTemplateId();
         String userId = request.getUserId();
 
@@ -136,14 +136,15 @@ public class CouponService {
 
         Long addedCount = redisTemplate.opsForSet().add(usersKey, userId);
         if (addedCount == 0) {
-            return CouponIssueResponse.fail(ErrorCode.COUPON_ALREADY_ISSUED);
+            return CouponIssueResult.fail(ErrorCode.COUPON_ALREADY_ISSUED);
         }
 
         Long currentCount = redisTemplate.opsForValue().increment(countKey);
 
         if (currentCount > totalQuantity) {
             redisTemplate.opsForSet().remove(usersKey, userId);
-            return CouponIssueResponse.fail(ErrorCode.COUPON_ISSUE_QUANTITY_EXCEEDED);
+
+            return CouponIssueResult.fail(ErrorCode.COUPON_ISSUE_QUANTITY_EXCEEDED);
         }
 
         // --- 여기까지 통과하면 '성공 대상'으로 확정 ---
@@ -157,9 +158,13 @@ public class CouponService {
             redisTemplate.opsForSet().remove(usersKey, userId);
             throw new CustomException(ErrorCode.MESSAGING_SYSTEM_ERROR);
         }
+        CouponIssueResponse response = CouponIssueResponse.builder()
+                .message("쿠폰이 성공적으로 발급되었습니다.")
+                .build();
 
 
-        return CouponIssueResponse.success("\"쿠폰이 성공적으로 발급되었습니다.\"");
+
+        return CouponIssueResult.success(response);
     }
 
 

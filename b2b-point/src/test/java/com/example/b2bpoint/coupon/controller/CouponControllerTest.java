@@ -218,6 +218,8 @@ class CouponControllerTest {
         assertThat(failCount.get()).isEqualTo(90);
 
         // 2. DB 최종 상태 검증: Consumer가 10개의 쿠폰을 모두 DB에 저장했어야 함
+        TimeUnit.SECONDS.sleep(10);
+
         long couponInDb = couponRepository.count();
         System.out.println("Coupons in DB: " + couponInDb);
         assertThat(couponInDb).isEqualTo(10);

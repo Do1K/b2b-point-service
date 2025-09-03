@@ -1,12 +1,15 @@
 package com.example.b2bpoint.coupon.controller;
 
 import com.example.b2bpoint.common.dto.ApiResponse;
+import com.example.b2bpoint.common.dto.ErrorResponse;
+import com.example.b2bpoint.common.exception.ErrorCode;
 import com.example.b2bpoint.coupon.domain.Coupon;
 import com.example.b2bpoint.coupon.dto.*;
 import com.example.b2bpoint.coupon.service.CouponService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,13 +46,21 @@ public class CouponController {
 
     @PostMapping("/issue-async")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<CouponIssueResponse> issueCouponAsync(
+    public ResponseEntity<ApiResponse<?>> issueCouponAsync(
             @RequestAttribute Long partnerId,
             @RequestBody @Valid CouponIssueRequest request) {
 
-        CouponIssueResponse response=couponService.issueCouponAsync(partnerId, request);
+        CouponIssueResult result=couponService.issueCouponAsync(partnerId, request);
 
-        return ApiResponse.success(response);
+        if (!result.isSuccess()) {
+            ErrorCode errorCode = result.getErrorCode();
+            return ResponseEntity
+                    .status(errorCode.getHttpStatus())
+                    .body(ApiResponse.error(ErrorResponse.of(errorCode)));
+        }
+
+        // 성공 시에는 200 OK 응답
+        return ResponseEntity.ok(ApiResponse.success(result.getData()));
     }
 
     @GetMapping("/{userId}")
