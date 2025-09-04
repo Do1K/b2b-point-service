@@ -46,21 +46,13 @@ public class CouponController {
 
     @PostMapping("/issue-async")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<ApiResponse<?>> issueCouponAsync(
+    public ApiResponse<CouponIssueResponse> issueCouponAsync(
             @RequestAttribute Long partnerId,
             @RequestBody @Valid CouponIssueRequest request) {
 
-        CouponIssueResult result=couponService.issueCouponAsync(partnerId, request);
+        CouponIssueResponse response=couponService.issueCouponAsync(partnerId, request);
 
-        if (!result.isSuccess()) {
-            ErrorCode errorCode = result.getErrorCode();
-            return ResponseEntity
-                    .status(errorCode.getHttpStatus())
-                    .body(ApiResponse.error(ErrorResponse.of(errorCode)));
-        }
-
-        // 성공 시에는 200 OK 응답
-        return ResponseEntity.ok(ApiResponse.success(result.getData()));
+        return ApiResponse.success(response);
     }
 
     @GetMapping("/{userId}")
