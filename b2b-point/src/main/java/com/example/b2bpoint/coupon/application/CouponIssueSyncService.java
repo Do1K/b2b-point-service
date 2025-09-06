@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
 @Service
 @RequiredArgsConstructor
 public class CouponIssueSyncService {
@@ -81,6 +82,7 @@ public class CouponIssueSyncService {
     }
 
     private void issueCouponsInBatch(List<CouponIssueMessage> messages) {
+
         List<Coupon> couponsToSave = messages.stream()
                 .map(message -> Coupon.createFromMessage(
                         message.getPartnerId(),

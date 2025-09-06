@@ -164,8 +164,6 @@ public class CouponService {
                 .message("쿠폰이 성공적으로 발급되었습니다.")
                 .build();
 
-
-
         return response;
     }
 
@@ -200,6 +198,7 @@ public class CouponService {
     public List<CouponResponse> getCoupons(Long partnerId, String userId) {
 
         List<Coupon> coupons=couponRepository.findCouponsWithTemplateByUserIdAndPartnerId(partnerId, userId);
+
         List<CouponResponse> response=new ArrayList<>();
         coupons.forEach(coupon->{
             response.add(CouponResponse.from(coupon));

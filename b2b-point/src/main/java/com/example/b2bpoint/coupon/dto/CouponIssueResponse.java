@@ -6,11 +6,22 @@ import lombok.Getter;
 
 @Getter
 public class CouponIssueResponse {
+    private final boolean isSuccess;
     private final String message;
+    private final ErrorCode errorCode;
 
     @Builder
     private CouponIssueResponse(String message) {
         this.message = message;
+        this.errorCode = errorCode;
+    }
+
+    public static CouponIssueResponse success(String message) {
+        return new CouponIssueResponse(true, message, null);
+    }
+
+    public static CouponIssueResponse fail(ErrorCode errorCode) {
+        return new CouponIssueResponse(false, null, errorCode);
     }
 
 }

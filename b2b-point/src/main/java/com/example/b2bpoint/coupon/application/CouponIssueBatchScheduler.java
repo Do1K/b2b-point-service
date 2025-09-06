@@ -57,6 +57,7 @@ public class CouponIssueBatchScheduler {
                 if (!messages.isEmpty()) {
                     log.info("{}개의 쿠폰 발급 요청을 배치 처리합니다.", messages.size());
                     couponIssueSyncService.issueCouponsAndUpdateQuantityInBatch(messages);
+
                 }
 
             }
