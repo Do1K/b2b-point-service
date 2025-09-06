@@ -36,7 +36,10 @@ public enum ErrorCode {
     COUPON_ISSUE_QUANTITY_EXCEEDED(HttpStatus.CONFLICT, "CP002", "쿠폰 발급 가능 수량을 초과했습니다."),
     COUPON_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "CP003", "사용할 수 없는 쿠폰입니다."),
     COUPON_NOT_IN_ISSUE_PERIOD(HttpStatus.BAD_REQUEST, "CP004", "쿠폰 발급 기간이 아닙니다."),
-    COUPON_ALREADY_ISSUED(HttpStatus.CONFLICT, "CP005", "이미 발급받은 쿠폰입니다.");
+    COUPON_ALREADY_ISSUED(HttpStatus.CONFLICT, "CP005", "이미 발급받은 쿠폰입니다."),
+    COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "CP006", "쿠폰을 찾을 수 없습니다."),
+    COUPON_OWNER_MISMATCH(HttpStatus.FORBIDDEN, "CP007", "쿠폰 사용 권한이 없습니다.");
+
 
     private final HttpStatus httpStatus;
     private final String code;

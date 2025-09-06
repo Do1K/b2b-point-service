@@ -63,4 +63,16 @@ public class CouponController {
         List<CouponResponse> coupons=couponService.getCoupons(partnerId,userId);
         return ApiResponse.success(coupons);
     }
+
+    @PatchMapping("/{couponCode}/use")
+    public ApiResponse<CouponUseResponse> useCoupon(
+            @RequestAttribute Long partnerId,
+            @PathVariable String couponCode,
+            @RequestBody @Valid CouponUseRequest request
+    ) {
+
+        String userId = request.getUserId();
+        CouponUseResponse response = couponService.useCoupon(partnerId, userId, couponCode);
+        return ApiResponse.success(response);
+    }
 }
