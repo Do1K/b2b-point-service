@@ -10,9 +10,8 @@ public class CouponIssueResponse {
     private final String message;
     private final ErrorCode errorCode;
 
-
-    private CouponIssueResponse(boolean isSuccess, String message, ErrorCode errorCode) {
-        this.isSuccess = isSuccess;
+    @Builder
+    private CouponIssueResponse(String message) {
         this.message = message;
         this.errorCode = errorCode;
     }
@@ -24,4 +23,5 @@ public class CouponIssueResponse {
     public static CouponIssueResponse fail(ErrorCode errorCode) {
         return new CouponIssueResponse(false, null, errorCode);
     }
+
 }

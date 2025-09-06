@@ -1,12 +1,15 @@
 package com.example.b2bpoint.coupon.controller;
 
 import com.example.b2bpoint.common.dto.ApiResponse;
+import com.example.b2bpoint.common.dto.ErrorResponse;
+import com.example.b2bpoint.common.exception.ErrorCode;
 import com.example.b2bpoint.coupon.domain.Coupon;
 import com.example.b2bpoint.coupon.dto.*;
 import com.example.b2bpoint.coupon.service.CouponService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
