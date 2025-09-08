@@ -207,4 +207,19 @@ public class CouponService {
 
     }
 
+    @Transactional
+    public CouponUseResponse useCoupon(Long partnerId, String userId, String couponCode) {
+        Coupon coupon = couponRepository.findByCodeWithLock(couponCode)
+                .orElseThrow(() -> new CustomException(ErrorCode.COUPON_NOT_FOUND));
+
+        coupon.use(partnerId, userId);
+
+        return CouponUseResponse.builder()
+                .couponCode(coupon.getCode())
+                .status(coupon.getStatus())
+                .usedAt(coupon.getUsedAt())
+                .build();
+    }
+
+
 }

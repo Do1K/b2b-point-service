@@ -2,6 +2,8 @@ package com.example.b2bpoint.coupon.domain;
 
 
 import com.example.b2bpoint.common.domain.BaseEntity;
+import com.example.b2bpoint.common.exception.CustomException;
+import com.example.b2bpoint.common.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -69,7 +71,7 @@ public class Coupon extends BaseEntity {
 
     }
 
-    @Builder(builderMethodName = "issueBuilder")
+    @Builder(builderMethodName = "issueBuilder", builderClassName = "issueBuilder")
     public Coupon(Long partnerId, String userId, Long couponTemplateId, LocalDateTime validUntil) {
         this.code = UUID.randomUUID().toString();
         this.partnerId = partnerId;
@@ -100,15 +102,22 @@ public class Coupon extends BaseEntity {
     }
 
 
-    public void use() {
-        verifyCanBeUsed(); // 사용할 수 있는 상태인지 먼저 검증
+    public void use(Long requestPartnerId, String requestUserId) {
+        verifyCanBeUsed(requestPartnerId, requestUserId); // 사용할 수 있는 상태인지 먼저 검증
         this.status = CouponStatus.USED;
         this.usedAt = LocalDateTime.now();
     }
 
-    private void verifyCanBeUsed() {
+    private void verifyCanBeUsed(Long requestPartnerId, String requestUserId) {
+        if (!this.partnerId.equals(requestPartnerId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN_ACCESS);
+        }
+        if (!this.userId.equals(requestUserId)) {
+            throw new CustomException(ErrorCode.COUPON_OWNER_MISMATCH);
+        }
+
         if (this.status != CouponStatus.AVAILABLE) {
-            throw new IllegalStateException("이미 사용되었거나 만료된 쿠폰입니다.");
+            throw new CustomException(ErrorCode.COUPON_ALREADY_USED_OR_EXPIRED);
         }
         if (LocalDateTime.now().isAfter(this.expiredAt)) {
             throw new IllegalStateException("유효기간이 만료된 쿠폰입니다.");
