@@ -117,7 +117,7 @@ public class Coupon extends BaseEntity {
         }
 
         if (this.status != CouponStatus.AVAILABLE) {
-            throw new IllegalStateException("이미 사용되었거나 만료된 쿠폰입니다.");
+            throw new CustomException(ErrorCode.COUPON_ALREADY_USED_OR_EXPIRED);
         }
         if (LocalDateTime.now().isAfter(this.expiredAt)) {
             throw new IllegalStateException("유효기간이 만료된 쿠폰입니다.");

@@ -7,6 +7,7 @@ import com.example.b2bpoint.coupon.domain.CouponType;
 import com.example.b2bpoint.coupon.dto.CouponIssueRequest;
 import com.example.b2bpoint.coupon.dto.CouponResponse;
 import com.example.b2bpoint.coupon.dto.CouponTemplateCreateRequest;
+import com.example.b2bpoint.coupon.dto.CouponUseRequest;
 import com.example.b2bpoint.coupon.repository.CouponRepository;
 import com.example.b2bpoint.coupon.repository.CouponTemplateRepository;
 import com.example.b2bpoint.coupon.service.CouponService;
@@ -68,6 +69,7 @@ class CouponControllerTest {
 
     private Partner testPartner;
     private String validApiKey;
+    private Coupon availableCoupon;
 
     private static final String COUPON_TEMPLATE_URL = "/api/v1/coupons/template";
     private static final String COUPON_ISSUE_ASYNC_URL = "/api/v1/coupons/issue-async";
@@ -90,6 +92,22 @@ class CouponControllerTest {
         testPartner.issueApiKey();
         validApiKey = testPartner.getApiKey();
         partnerRepository.save(testPartner);
+
+//        CouponTemplate template1 = couponTemplateRepository.save(
+//                CouponTemplate.builder()
+//                        .name("테스트쿠폰템플릿")
+//                        .couponType(CouponType.FIXED_AMOUNT)
+//                        .discountValue(BigDecimal.TEN)
+//                        .minOrderAmount(10)
+//                        .validFrom(LocalDateTime.now())
+//                        .validUntil(LocalDateTime.now().plusDays(10))
+//                        .partnerId(testPartner.getId())
+//                        .build()
+//        );
+
+//        availableCoupon = couponRepository.save(
+//                Coupon.createFromMessage(testPartner.getId(), "test-user-123", template.getId(),template1.getValidUntil())
+//        );
     }
 
     // --- CouponTemplate 생성 테스트 (기존과 거의 동일, URL 경로만 수정) ---
@@ -159,7 +177,7 @@ class CouponControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody)
                 )
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("CP002")) // COUPON_ISSUE_QUANTITY_EXCEEDED
                 .andDo(print());
     }
@@ -279,5 +297,108 @@ class CouponControllerTest {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].couponName").value("선착순 테스트 쿠폰"));
     }
+
+    @DisplayName("성공: 유효한 쿠폰을 성공적으로 '사용됨' 처리한다")
+    @Test
+    void useCoupon_Success() throws Exception {
+        // given
+        CouponTemplate couponTemplate=createCouponTemplate(1);
+
+        availableCoupon = couponRepository.save(
+                Coupon.createFromMessage(testPartner.getId(), "test-user-123", couponTemplate.getId(), couponTemplate.getValidUntil())
+        );
+        CouponUseRequest request = CouponUseRequest.builder()
+                .userId(availableCoupon.getUserId())
+                .orderId(999L)
+                .orderAmount(10000)
+                .build();
+        String requestJson = objectMapper.writeValueAsString(request);
+
+        // when & then
+        mockMvc.perform(
+                        patch("/api/v1/coupons/{couponCode}/use", availableCoupon.getCode())
+                                .header("X-API-KEY", validApiKey)
+                                .requestAttr("partnerId", testPartner.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestJson)
+                )
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("USED"))
+                .andExpect(jsonPath("$.data.couponCode").value(availableCoupon.getCode()));
+
+        // DB 상태 직접 검증 (선택 사항이지만, 가장 확실한 방법)
+        Coupon usedCoupon = couponRepository.findById(availableCoupon.getId()).get();
+        assertThat(usedCoupon.getStatus()).isEqualTo(CouponStatus.USED);
+        assertThat(usedCoupon.getUsedAt()).isNotNull();
+    }
+
+    @DisplayName("실패: 이미 사용된 쿠폰을 다시 사용하려고 하면 예외가 발생한다")
+    @Test
+    void useCoupon_Fail_WhenAlreadyUsed() throws Exception {
+        // given
+        // 쿠폰을 미리 '사용됨' 상태로 변경
+        CouponTemplate couponTemplate=createCouponTemplate(1);
+
+        availableCoupon = couponRepository.save(
+                Coupon.createFromMessage(testPartner.getId(), "test-user-123", couponTemplate.getId(), couponTemplate.getValidUntil())
+        );
+        availableCoupon.use(testPartner.getId(), availableCoupon.getUserId());
+        couponRepository.saveAndFlush(availableCoupon); // DB에 즉시 반영
+
+        CouponUseRequest request = CouponUseRequest.builder()
+                .userId(availableCoupon.getUserId())
+                .orderId(1001L)
+                .orderAmount(20000)
+                .build();
+        String requestJson = objectMapper.writeValueAsString(request);
+
+        // when & then
+        mockMvc.perform(
+                        patch("/api/v1/coupons/{couponCode}/use", availableCoupon.getCode())
+                                .requestAttr("partnerId", testPartner.getId())
+                                .header("X-API-KEY", validApiKey)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestJson)
+                )
+                .andDo(print())
+                .andExpect(status().isConflict()) //
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("CP008")); // COUPON_ALREADY_USED_OR_EXPIRED
+    }
+
+    @DisplayName("실패: 다른 사용자가 남의 쿠폰을 사용하려고 하면 예외가 발생한다")
+    @Test
+    void useCoupon_Fail_WhenOwnerMismatch() throws Exception {
+        // given
+        CouponTemplate couponTemplate=createCouponTemplate(1);
+
+        availableCoupon = couponRepository.save(
+                Coupon.createFromMessage(testPartner.getId(), "test-user-123", couponTemplate.getId(), couponTemplate.getValidUntil())
+        );
+        String anotherUser = "another-user-789";
+        CouponUseRequest request = CouponUseRequest.builder()
+                .userId(anotherUser) // 쿠폰 소유주가 아닌 다른 사용자로 요청
+                .orderId(1002L)
+                .orderAmount(30000)
+                .build();
+        String requestJson = objectMapper.writeValueAsString(request);
+
+        // when & then
+        mockMvc.perform(
+                        patch("/api/v1/coupons/{couponCode}/use", availableCoupon.getCode())
+                                .requestAttr("partnerId", testPartner.getId())
+                                .header("X-API-KEY", validApiKey)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestJson)
+                )
+                .andDo(print())
+                .andExpect(status().isForbidden()) // 403 Forbidden 예상
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("CP007"));
+    }
+
+
 
 }
