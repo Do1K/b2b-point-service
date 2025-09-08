@@ -71,7 +71,7 @@ public class Coupon extends BaseEntity {
 
     }
 
-    @Builder(builderMethodName = "issueBuilder")
+    @Builder(builderMethodName = "issueBuilder", builderClassName = "issueBuilder")
     public Coupon(Long partnerId, String userId, Long couponTemplateId, LocalDateTime validUntil) {
         this.code = UUID.randomUUID().toString();
         this.partnerId = partnerId;

@@ -5,6 +5,7 @@ import com.example.b2bpoint.common.exception.ErrorCode;
 import com.example.b2bpoint.coupon.application.CouponIssueProducer;
 import com.example.b2bpoint.coupon.application.CouponReader;
 import com.example.b2bpoint.coupon.domain.Coupon;
+import com.example.b2bpoint.coupon.domain.CouponStatus;
 import com.example.b2bpoint.coupon.domain.CouponTemplate;
 import com.example.b2bpoint.coupon.domain.CouponType;
 import com.example.b2bpoint.coupon.dto.*;
@@ -31,6 +32,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -289,6 +291,56 @@ class CouponServiceTest {
             assertThat(responses).isNotNull();
             assertThat(responses).isEmpty();
             verify(couponRepository, times(1)).findByPartnerIdAndUserId(partnerId, userId);
+        }
+    }
+
+    @Nested
+    @DisplayName("쿠폰 사용(useCoupon)")
+    class UseCouponTest {
+        @Spy // Coupon 객체의 실제 메소드(use)를 호출하고 검증하기 위해 @Spy 사용
+        private Coupon availableCoupon;
+
+        @DisplayName("성공: 유효한 쿠폰을 성공적으로 '사용됨' 처리한다")
+        @Test
+        void useCoupon_Success() {
+            // given
+            Long partnerId = 1L;
+            String userId = "test-user";
+            String couponCode = "VALID-COUPON-CODE";
+
+            availableCoupon = Coupon.issueBuilder()
+                            .partnerId(partnerId)
+                                    .userId(userId)
+                                            .validUntil(LocalDateTime.now().plusDays(1))
+                                                    .build();
+
+            given(couponRepository.findByCodeWithLock(couponCode))
+                    .willReturn(Optional.of(availableCoupon));
+
+            // when
+            CouponUseResponse response = couponService.useCoupon(partnerId, userId, couponCode);
+
+            // then
+            verify(couponRepository, times(1)).findByCodeWithLock(couponCode);
+
+            assertThat(response.getStatus()).isEqualTo(CouponStatus.USED);
+            assertThat(response.getUsedAt()).isNotNull();
+        }
+
+        @DisplayName("실패: 존재하지 않는 쿠폰 코드로 요청 시 예외가 발생한다")
+        @Test
+        void useCoupon_Fail_WhenCouponNotFound() {
+            // given
+            String nonExistentCode = "INVALID-CODE";
+            given(couponRepository.findByCodeWithLock(nonExistentCode))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            CustomException exception = assertThrows(CustomException.class, () -> {
+                couponService.useCoupon(1L, "test-user", nonExistentCode);
+            });
+
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.COUPON_NOT_FOUND);
         }
     }
 
