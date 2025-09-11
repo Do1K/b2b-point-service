@@ -12,3 +12,18 @@ spring:
 
 server:
   port: 8081
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # "health"와 "prometheus" 엔드포인트를 외부에서 접근할 수 있도록 허용합니다.
+        include: health, prometheus
+  endpoint:
+    health:
+      show-details: always # health 엔드포인트에서 상세 정보를 볼 수 있도록 설정
+  metrics:
+    tags:
+      # 모든 메트릭에 'application'이라는 이름표를 붙여서, 나중에 Grafana에서 구분하기 쉽게 만듭니다.
+      application: my-coupon-service
