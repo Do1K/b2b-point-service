@@ -1,7 +1,7 @@
 spring:
   # --- 로컬 DB (Docker) 설정 ---
   datasource:
-    url: jdbc:mysql://localhost:3306/point_service_db
+    url: jdbc:mysql://localhost:3306/point_service_db?rewriteBatchedStatements=true
     username: root
     password: root4321 # 로컬 DB 비밀번호 (Git에 올라가도 비교적 안전)
   jpa:
