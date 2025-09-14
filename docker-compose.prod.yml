@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # 1. 스프링 부트 애플리케이션 서비스
+  app:
+    image: ghcr.io/${GITHUB_REPOSITORY_LOWER}:${IMAGE_TAG:-latest}
+    container_name: b2b-point-app
+    depends_on: # DB, Redis, RabbitMQ가 먼저 실행된 후 앱이 실행되도록 순서를 정합니다.
+      - mysql-db
+      - redis-cache
+      - rabbitmq-queue
+    ports:
+      - "8080:8080" # 호스트의 8080 포트와 앱의 8080 포트를 연결
+    environment: # 애플리케이션이 사용할 환경 변수 (DB 접속 정보 등)
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/point_service_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root4321
+      - SPRING_REDIS_HOST=redis-cache
+      - SPRING_RABBITMQ_HOST=rabbitmq-queue
+    restart: always # 컨테이너가 어떤 이유로든 종료되면 항상 자동으로 재시작합니다.
+
+  # 2. MySQL 데이터베이스 서비스 (로컬과 동일)
+  mysql-db:
+    image: mysql:8.0
+    container_name: point-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root4321
+      MYSQL_DATABASE: point_service_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    restart: always
+
+  # 3. Redis 캐시 서비스 (로컬과 동일)
+  redis-cache:
+    image: redis:latest
+    container_name: point-redis
+    restart: always
+
+  # 4. RabbitMQ 메시지 큐 서비스 (로컬과 동일)
+  rabbitmq-queue:
+    image: rabbitmq:3-management
+    container_name: point-rabbitmq
+    ports: # 관리자 페이지는 외부에 노출
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    restart: always
+
+# Docker Compose가 자동으로 생성/관리할 데이터 볼륨을 정의합니다.
+volumes:
+  mysql-data:
